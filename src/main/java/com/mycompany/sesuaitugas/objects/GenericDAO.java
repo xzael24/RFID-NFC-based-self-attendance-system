@@ -1,47 +1,48 @@
 package com.mycompany.sesuaitugas.objects;
 
+import com.mongodb.client.MongoCollection;
+import org.bson.conversions.Bson;
 import java.util.ArrayList;
 import java.util.List;
 
-// Implementasi Generic DAO untuk MongoDB (Pertemuan 5-7)
+/**
+ * Implementasi Generic DAO untuk MongoDB yang efisien dan reusable.
+ * @param <T>
+ */
 public class GenericDAO<T> implements BaseDAO<T> {
-    private final String collectionName;
-    private final Class<T> clazz; 
-    private List<T> dataList = new ArrayList<>();
-
+    private final MongoCollection<T> collection;
+    // Konstruktor menerima nama koleksi dan kelas entitas untuk mapping otomatis
     public GenericDAO(String collectionName, Class<T> clazz) {
-        this.collectionName = collectionName;
-        this.clazz = clazz;
+        this.collection = MongoManager.getDatabase().getCollection(collectionName, clazz);
     }
 
     @Override
     public void save(T entity) {
-        dataList.add(entity);
-        // Pada Pertemuan 5, clazz akan digunakan oleh MongoDB Driver 5.0.0 
-        // untuk mapping POJO (Plain Old Java Object) secara otomatis [2, 7].
-        System.out.printf("Menyimpan objek tipe: %s ke koleksi: %s\n", clazz.getSimpleName(), collectionName);
+        collection.insertOne(entity);
     }
 
     @Override
-    public void update(int index, T entity) {
-        //
+    public void update(Bson filter, T entity) {
+        collection.replaceOne(filter, entity);
     }
 
     @Override
-    public void delete(int index) {
-        //
+    public void delete(Bson filter) {
+        collection.deleteOne(filter);
     }
 
     @Override
     public List<T> findAll() {
-        //
-        return dataList;
+        return collection.find().into(new ArrayList<>());
     }
 
     @Override
-    public T findByIndex(int index) {
-        //
-        return null;
+    public T findOne(Bson filter) {
+        return collection.find(filter).first();
     }
 
+    @Override
+    public List<T> findMany(Bson filter) {
+        return collection.find(filter).into(new ArrayList<>());
+    }
 }
