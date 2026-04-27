@@ -7,6 +7,7 @@ package com.mycompany.sesuaitugas.objects;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
 
 /**
  *
@@ -21,8 +22,19 @@ public class MongoManager {
 
     public static MongoDatabase getDatabase() {
         if (mongoClient == null) {
-            // Menggunakan default connection string untuk MongoDB versi 5.0.0
-            mongoClient = MongoClients.create("mongodb://localhost:27017");
+            try {
+                // Menggunakan default connection string untuk MongoDB versi 5.0.0
+                mongoClient = MongoClients.create("mongodb://localhost:27017");
+                
+                // Melakukan ping untuk memastikan server benar-benar tersambung
+                MongoDatabase database = mongoClient.getDatabase(DATABASE_NAME);
+                database.runCommand(new Document("ping", 1));
+                
+                System.out.printf("Berhasil terhubung ke MongoDB (Database: %s)\n", DATABASE_NAME);
+            } catch (Exception e) {
+                System.err.println("Gagal terhubung ke MongoDB. Pastikan server MongoDB berjalan di localhost:27017");
+                e.printStackTrace();
+            }
         }
         return mongoClient.getDatabase(DATABASE_NAME);
     }
