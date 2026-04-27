@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.ituhn.pemkom2.objects;
+package com.mycompany.sesuaitugas.objects;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -17,7 +17,7 @@ import com.mongodb.client.MongoDatabase;
  */
 public class MongoManager {
     private static MongoClient mongoClient;
-    private static final String DATABASE_NAME = "bank_absensi";
+    private static final String DATABASE_NAME = "db_absensi_pemkom";
 
     public static MongoDatabase getDatabase() {
         if (mongoClient == null) {

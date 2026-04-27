@@ -1,4 +1,4 @@
-package com.ituhn.pemkom2.objects;
+package com.mycompany.sesuaitugas.objects;
 
 public class Karyawan {
 
@@ -21,11 +21,13 @@ public class Karyawan {
 
     @Override
     public String toString() {
-        return "Karyawan{" + 
-                "uidRfid=" + uidRfid + 
-                ", idKaryawan=" + idKaryawan + 
-                ", namaLengkap=" + namaLengkap + 
-                ", departemen=" + departemen + '}';
+        StringBuilder sb = new StringBuilder("Karyawan{");
+        sb.append("uidRfid=").append(uidRfid);
+        sb.append(", idKaryawan=").append(idKaryawan);
+        sb.append(", namaLengkap=").append(namaLengkap);
+        sb.append(", departemen=").append(departemen);
+        sb.append('}');
+        return sb.toString();
     }
 
     public String getUidRfid() {

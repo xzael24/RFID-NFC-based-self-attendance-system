@@ -8,7 +8,9 @@ package com.mycompany.sesuaitugas;
  *
  * @author AcerAG14
  */
-public class MainApp {
+import com.mycompany.sesuaitugas.objects.Karyawan;
+
+public class SesuaiTugas {
     public static void main(String[] args) {
         Karyawan KR = new Karyawan();
         if(KR instanceof Karyawan){

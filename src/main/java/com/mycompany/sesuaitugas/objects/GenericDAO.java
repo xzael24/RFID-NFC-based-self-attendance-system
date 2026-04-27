@@ -1,4 +1,4 @@
-package com.ituhn.pemkom2.objects;
+package com.mycompany.sesuaitugas.objects;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +19,7 @@ public class GenericDAO<T> implements BaseDAO<T> {
         dataList.add(entity);
         // Pada Pertemuan 5, clazz akan digunakan oleh MongoDB Driver 5.0.0 
         // untuk mapping POJO (Plain Old Java Object) secara otomatis [2, 7].
-        System.out.println("Menyimpan objek tipe: " + clazz.getSimpleName() + 
-                           " ke koleksi: " + collectionName);
+        System.out.printf("Menyimpan objek tipe: %s ke koleksi: %s\n", clazz.getSimpleName(), collectionName);
     }
 
     @Override

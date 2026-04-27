@@ -1,4 +1,4 @@
-package com.ituhn.pemkom2.objects;
+package com.mycompany.sesuaitugas.objects;
 
 import java.util.List;
 
@@ -8,4 +8,4 @@ public interface BaseDAO<T> {
     void delete(int index);
     List<T> findAll();
     T findByIndex(int index);    
-}gi
+}
