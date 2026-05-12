@@ -17,6 +17,12 @@
             <artifactId>mongodb-driver-sync</artifactId>
             <version>5.0.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.netbeans.external</groupId>
+            <artifactId>AbsoluteLayout</artifactId>
+            <version>RELEASE270</version>
+
         
         <dependency>
             <groupId>org.slf4j</groupId>

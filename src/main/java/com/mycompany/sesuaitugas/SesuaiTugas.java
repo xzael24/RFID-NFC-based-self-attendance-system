@@ -9,7 +9,9 @@ package com.mycompany.sesuaitugas;
  * @author AcerAG14
  */
 import com.mycompany.sesuaitugas.objects.Karyawan;
+import com.mycompany.sesuaitugas.objects.MongoManager;
 import com.mycompany.sesuaitugas.objects.TesKoneksi;
+
 
 public class SesuaiTugas {
     public static void main(String[] args) {
@@ -20,7 +22,9 @@ public class SesuaiTugas {
             System.err.println("Something else");
         }
 
+        MongoManager.getDatabase();
         System.out.println("\nMenguji koneksi ke database...");
         TesKoneksi.testConnection();
+
     }
 }
