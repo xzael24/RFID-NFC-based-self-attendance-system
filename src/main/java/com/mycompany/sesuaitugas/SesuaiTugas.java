@@ -10,15 +10,21 @@ package com.mycompany.sesuaitugas;
  */
 import com.mycompany.sesuaitugas.objects.Karyawan;
 import com.mycompany.sesuaitugas.objects.MongoManager;
+import com.mycompany.sesuaitugas.objects.TesKoneksi;
+
 
 public class SesuaiTugas {
     public static void main(String[] args) {
         Karyawan KR = new Karyawan();
         if(KR instanceof Karyawan){
-            System.err.println("Karyawan");
+            System.err.println("Karyawan Loaded");
         }else {
             System.err.println("Something else");
         }
+
         MongoManager.getDatabase();
+        System.out.println("\nMenguji koneksi ke database...");
+        TesKoneksi.testConnection();
+
     }
 }
