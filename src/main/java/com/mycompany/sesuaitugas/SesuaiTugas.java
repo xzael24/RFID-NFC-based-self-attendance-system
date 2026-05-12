@@ -9,6 +9,7 @@ package com.mycompany.sesuaitugas;
  * @author AcerAG14
  */
 import com.mycompany.sesuaitugas.objects.Karyawan;
+import com.mycompany.sesuaitugas.objects.MongoManager;
 
 public class SesuaiTugas {
     public static void main(String[] args) {
@@ -17,7 +18,7 @@ public class SesuaiTugas {
             System.err.println("Karyawan");
         }else {
             System.err.println("Something else");
-        }// //
-        // //
+        }
+        MongoManager.getDatabase();
     }
 }

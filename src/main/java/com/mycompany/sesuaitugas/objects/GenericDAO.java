@@ -15,7 +15,7 @@ public class GenericDAO<T> implements BaseDAO<T> {
     }
 
     @Override
-    public void save(T entity) {
+    public void save(T entity) { // T disini artinya GenericObject
         dataList.add(entity);
         // Pada Pertemuan 5, clazz akan digunakan oleh MongoDB Driver 5.0.0 
         // untuk mapping POJO (Plain Old Java Object) secara otomatis [2, 7].
