@@ -8,23 +8,10 @@ package com.mycompany.sesuaitugas;
  *
  * @author AcerAG14
  */
-import com.mycompany.sesuaitugas.objects.Karyawan;
-import com.mycompany.sesuaitugas.objects.MongoManager;
-import com.mycompany.sesuaitugas.objects.TesKoneksi;
-
+import com.mycompany.sesuaitugas.gui.Login;
 
 public class SesuaiTugas {
     public static void main(String[] args) {
-        Karyawan KR = new Karyawan();
-        if(KR instanceof Karyawan){
-            System.err.println("Karyawan Loaded");
-        }else {
-            System.err.println("Something else");
-        }
-
-        MongoManager.getDatabase();
-        System.out.println("\nMenguji koneksi ke database...");
-        TesKoneksi.testConnection();
-
+        java.awt.EventQueue.invokeLater(() -> new Login().setVisible(true));
     }
 }

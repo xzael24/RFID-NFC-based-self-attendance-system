@@ -2,7 +2,15 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
-package com.mycompany.sesuaitugas.GUI;
+package com.mycompany.sesuaitugas.gui;
+
+import com.mycompany.sesuaitugas.objects.LoginService;
+import com.mycompany.sesuaitugas.objects.User;
+
+import java.awt.event.ActionEvent;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -11,12 +19,21 @@ package com.mycompany.sesuaitugas.GUI;
 public class Login extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Login.class.getName());
+    private final LoginService loginService;
+
+    /** Echo character untuk menyembunyikan kata sandi (disimpan sebelum placeholder). */
+    private char passwordEchoChar = '\u2022';
 
     /**
      * Creates new form Login
      */
     public Login() {
         initComponents();
+        loginService = new LoginService();
+        loginService.ensureDefaultAdmin();
+        loginService.ensureDefaultUsers();
+        setupListeners();
+        setupPlaceholders();
     }
 
     /**
@@ -36,6 +53,7 @@ public class Login extends javax.swing.JFrame {
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         jPasswordField1 = new javax.swing.JPasswordField();
+        jCheckBox2 = new javax.swing.JCheckBox();
         jCheckBox1 = new javax.swing.JCheckBox();
         jButton1 = new javax.swing.JButton();
 
@@ -54,7 +72,7 @@ public class Login extends javax.swing.JFrame {
         jLabel2.setText("Selamat datang kembali! Silakan masukkan detail Anda.");
 
         jTextField1.setForeground(new java.awt.Color(51, 51, 51));
-        jTextField1.setText("student.name@university.edu");
+        jTextField1.setText("nim@kampus.id");
 
         jLabel3.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         jLabel3.setText("Kata Sandi");
@@ -63,6 +81,9 @@ public class Login extends javax.swing.JFrame {
         jLabel4.setText("Masukan Email");
 
         jPasswordField1.setText("jPasswordField1");
+
+        jCheckBox2.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jCheckBox2.setText("Tampilkan kata sandi");
 
         jCheckBox1.setText("Ingat saya selama 30 hari");
         jCheckBox1.addActionListener(new java.awt.event.ActionListener() {
@@ -87,7 +108,8 @@ public class Login extends javax.swing.JFrame {
                             .addComponent(jLabel2)
                             .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 530, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jPasswordField1, javax.swing.GroupLayout.PREFERRED_SIZE, 530, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jCheckBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 126, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(jCheckBox2)
+                            .addComponent(jCheckBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGap(55, 55, 55)
                         .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 170, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -114,11 +136,13 @@ public class Login extends javax.swing.JFrame {
                 .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPasswordField1, javax.swing.GroupLayout.PREFERRED_SIZE, 55, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jCheckBox2, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jCheckBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(48, 48, 48)
                 .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(140, Short.MAX_VALUE))
+                .addContainerGap(144, Short.MAX_VALUE))
             .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(jPanel2Layout.createSequentialGroup()
                     .addGap(224, 224, 224)
@@ -130,17 +154,17 @@ public class Login extends javax.swing.JFrame {
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addContainerGap(821, Short.MAX_VALUE)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(432, 432, 432)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(577, 577, 577))
+                .addContainerGap(966, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(59, 59, 59)
+                .addGap(176, 176, 176)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(420, Short.MAX_VALUE))
+                .addContainerGap(265, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -164,6 +188,168 @@ public class Login extends javax.swing.JFrame {
     private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_jCheckBox1ActionPerformed
+
+
+
+    // ─── Login Logic (non-generated) ────────────────────────────────────────────
+
+    /**
+     * Menambahkan ActionListener pada tombol "Masuk" dan Enter key pada password field.
+     */
+    private void setupListeners() {
+        // Klik tombol "Masuk"
+        jButton1.addActionListener(e -> performLogin());
+
+        // Tekan Enter di password field langsung login
+        jPasswordField1.addActionListener(e -> performLogin());
+
+        jCheckBox2.addActionListener(e -> applyPasswordEchoMode());
+    }
+
+    /**
+     * Menampilkan atau menyembunyikan karakter kata sandi sesuai checkbox (placeholder tetap teks biasa).
+     */
+    private void applyPasswordEchoMode() {
+        final String passwordPlaceholder = "Masukkan kata sandi";
+        String current = new String(jPasswordField1.getPassword());
+        if (current.equals(passwordPlaceholder)) {
+            jPasswordField1.setEchoChar((char) 0);
+            return;
+        }
+        if (jCheckBox2.isSelected()) {
+            jPasswordField1.setEchoChar((char) 0);
+        } else {
+            jPasswordField1.setEchoChar(passwordEchoChar);
+        }
+    }
+
+
+
+    /**
+     * Setup placeholder text behaviour untuk email & password fields.
+     */
+    private void setupPlaceholders() {
+        final String emailPlaceholder = "nim@kampus.id";
+        final String passwordPlaceholder = "Masukkan kata sandi";
+        final java.awt.Color placeholderColor = new java.awt.Color(153, 153, 153);
+        final java.awt.Color normalColor = java.awt.Color.BLACK;
+
+        // ── Email field placeholder ──
+        jTextField1.setForeground(placeholderColor);
+        jTextField1.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (jTextField1.getText().equals(emailPlaceholder)) {
+                    jTextField1.setText("");
+                    jTextField1.setForeground(normalColor);
+                }
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (jTextField1.getText().trim().isEmpty()) {
+                    jTextField1.setForeground(placeholderColor);
+                    jTextField1.setText(emailPlaceholder);
+                }
+            }
+        });
+
+        // ── Password field placeholder ──
+        // Simpan echoChar asli, lalu tampilkan placeholder sebagai teks biasa
+        passwordEchoChar = jPasswordField1.getEchoChar();
+        if (passwordEchoChar == 0) {
+            passwordEchoChar = '\u2022';
+        }
+        jPasswordField1.setEchoChar((char) 0);  // tampilkan teks, bukan dots
+        jPasswordField1.setText(passwordPlaceholder);
+        jPasswordField1.setForeground(placeholderColor);
+
+        jPasswordField1.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                String current = new String(jPasswordField1.getPassword());
+                if (current.equals(passwordPlaceholder)) {
+                    jPasswordField1.setText("");
+                    applyPasswordEchoMode();
+                    jPasswordField1.setForeground(normalColor);
+                }
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                String current = new String(jPasswordField1.getPassword());
+                if (current.trim().isEmpty()) {
+                    jPasswordField1.setEchoChar((char) 0); // tampilkan teks
+                    jPasswordField1.setForeground(placeholderColor);
+                    jPasswordField1.setText(passwordPlaceholder);
+                } else {
+                    applyPasswordEchoMode();
+                }
+            }
+        });
+    }
+
+    /**
+     * Melakukan proses login:
+     * 1. Ambil email & password dari field
+     * 2. Validasi via LoginService
+     * 3. Jika berhasil → buka Admin panel, tutup Login
+     * 4. Jika gagal → tampilkan pesan error
+     */
+    private void performLogin() {
+        String email = jTextField1.getText().trim();
+        String password = new String(jPasswordField1.getPassword());
+
+        // Validasi input kosong
+        if (email.isEmpty() || email.equals("nim@kampus.id")) {
+            JOptionPane.showMessageDialog(this,
+                    "Silakan masukkan email Anda.",
+                    "Email Kosong", JOptionPane.WARNING_MESSAGE);
+            jTextField1.requestFocus();
+            return;
+        }
+        if (password.isEmpty() || password.equals("Masukkan kata sandi")) {
+            JOptionPane.showMessageDialog(this,
+                    "Silakan masukkan kata sandi Anda.",
+                    "Password Kosong", JOptionPane.WARNING_MESSAGE);
+            jPasswordField1.requestFocus();
+            return;
+        }
+
+        // Autentikasi
+        User user = loginService.authenticate(email, password);
+
+        if (user != null) {
+            String greet = user.getNama() != null && !user.getNama().trim().isEmpty()
+                    ? user.getNama().trim()
+                    : user.getEmail();
+            JOptionPane.showMessageDialog(this,
+                    "Login berhasil! Selamat datang, " + greet,
+                    "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+
+            try {
+                JFrame adminFrame = new JFrame("Admin Dashboard");
+                adminFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                adminFrame.setContentPane(new Admin(user));
+                adminFrame.pack();
+                adminFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                adminFrame.setLocationRelativeTo(null);
+                adminFrame.setVisible(true);
+                this.dispose();
+            } catch (Throwable ex) {
+                logger.log(java.util.logging.Level.SEVERE, "Gagal membuka halaman Admin", ex);
+                JOptionPane.showMessageDialog(this,
+                        "Gagal membuka halaman admin: " + ex.getMessage(),
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Email atau kata sandi salah. Silakan coba lagi.",
+                    "Login Gagal", JOptionPane.ERROR_MESSAGE);
+            jPasswordField1.setText("");
+            jPasswordField1.requestFocus();
+        }
+    }
 
     /**
      * @param args the command line arguments
@@ -193,6 +379,7 @@ public class Login extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
     private javax.swing.JCheckBox jCheckBox1;
+    private javax.swing.JCheckBox jCheckBox2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;

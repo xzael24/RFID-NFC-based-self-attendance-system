@@ -1,30 +1,33 @@
 package com.mycompany.sesuaitugas.objects;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
+/**
+ * Catatan kehadiran / tap (koleksi {@code log_absensi}).
+ * Menggunakan {@link Date} agar serialisasi MongoDB + codec POJO stabil di Java 8.
+ */
 public class LogAbsensi {
+
     private String idLog;
+    private String nim;
+    private String kodeKelas;
     private String uidRfid;
-    private LocalDateTime waktuTap;
+    private Date waktuTap;
     private String status;
+    private String keterangan;
 
     public LogAbsensi() {
-        //
     }
 
-    public LogAbsensi(String idLog, String uidRfid, LocalDateTime waktuTap, String status) {
+    public LogAbsensi(String idLog, String nim, String kodeKelas, String uidRfid,
+            Date waktuTap, String status, String keterangan) {
         this.idLog = idLog;
+        this.nim = nim;
+        this.kodeKelas = kodeKelas;
         this.uidRfid = uidRfid;
         this.waktuTap = waktuTap;
         this.status = status;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
+        this.keterangan = keterangan;
     }
 
     public String getIdLog() {
@@ -35,6 +38,22 @@ public class LogAbsensi {
         this.idLog = idLog;
     }
 
+    public String getNim() {
+        return nim;
+    }
+
+    public void setNim(String nim) {
+        this.nim = nim;
+    }
+
+    public String getKodeKelas() {
+        return kodeKelas;
+    }
+
+    public void setKodeKelas(String kodeKelas) {
+        this.kodeKelas = kodeKelas;
+    }
+
     public String getUidRfid() {
         return uidRfid;
     }
@@ -43,15 +62,27 @@ public class LogAbsensi {
         this.uidRfid = uidRfid;
     }
 
-    public LocalDateTime getWaktuTap() {
+    public Date getWaktuTap() {
         return waktuTap;
     }
 
-    public void setWaktuTap(LocalDateTime waktuTap) {
+    public void setWaktuTap(Date waktuTap) {
         this.waktuTap = waktuTap;
     }
-    
-    
-    
-    
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getKeterangan() {
+        return keterangan;
+    }
+
+    public void setKeterangan(String keterangan) {
+        this.keterangan = keterangan;
+    }
 }
