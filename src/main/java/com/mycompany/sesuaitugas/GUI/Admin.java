@@ -6,8 +6,9 @@ package com.mycompany.sesuaitugas.gui;
 
 import com.mycompany.sesuaitugas.objects.DaftarJurusan;
 import com.mycompany.sesuaitugas.objects.Mahasiswa;
-import com.mycompany.sesuaitugas.objects.MahasiswaService;
 import com.mycompany.sesuaitugas.objects.User;
+import com.mycompany.sesuaitugas.services.MahasiswaService;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -27,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+
 /**
  *
  * @author ASUS
@@ -46,6 +48,7 @@ public class Admin extends javax.swing.JPanel {
     /** NIM baris yang sedang diedit (null jika form kosong / baru). */
     private String editingNimOriginal;
     private List<Mahasiswa> mahasiswaCache = new ArrayList<>();
+
     /**
      * Creates new form Admin (tanpa info sesi).
      */
@@ -67,6 +70,8 @@ public class Admin extends javax.swing.JPanel {
         reloadMahasiswaFromDb();
     }
 
+
+
     private void installSessionBanner() {
         jLabelSessionBanner = new JLabel();
         jLabelSessionBanner.setFont(jLabelSessionBanner.getFont().deriveFont(Font.PLAIN, 14f));
@@ -84,7 +89,7 @@ public class Admin extends javax.swing.JPanel {
                     + "  |  Role (database): " + (roleDb.isEmpty() ? "-" : roleDb)
                     + " (" + roleTampil + ")");
         } else {
-            jLabelSessionBanner.setText("Dashboard · Role: — (belum ada data sesi login)");
+            jLabelSessionBanner.setText("Dashboard · Role: - (belum ada data sesi login)");
         }
         jPanel1.add(jLabelSessionBanner, new org.netbeans.lib.awtextra.AbsoluteConstraints(50, 6, 1400, 30));
     }
@@ -104,7 +109,8 @@ public class Admin extends javax.swing.JPanel {
     }
 
     /**
-     * Panel daftar kartu ada di {@code Admin.form} ({@link #jPanelMahasiswaList}) supaya tampil di NetBeans Design.
+     * Panel daftar kartu ada di {@code Admin.form} ({@link #jPanelMahasiswaList})
+     * supaya tampil di NetBeans Design.
      */
     private void setupMahasiswaGrid() {
         mahasiswaListPanel = jPanelMahasiswaList;
@@ -136,7 +142,9 @@ public class Admin extends javax.swing.JPanel {
         sb.append("<html><body style='width:190px;color:#555;font-size:11px'>");
         sb.append("<b>NIM</b> ").append(escapeHtml(nim)).append("<br/>");
         sb.append("<b>ID</b> ").append(escapeHtml(nullToEmpty(m.getIdMahasiswa()))).append("<br/>");
-        sb.append("<b>Jurusan</b> ").append(escapeHtml(nullToEmpty(m.getJurusan())));
+        sb.append("<b>Jurusan</b> ").append(escapeHtml(nullToEmpty(m.getJurusan()))).append("<br/>");
+        sb.append("<b>Email</b> ").append(escapeHtml(nullToEmpty(m.getEmail()))).append("<br/>");
+        sb.append("<b>Password</b> ").append(escapeHtml(nullToEmpty(m.getPassword())));
         sb.append("</body></html>");
         JLabel metaLb = new JLabel(sb.toString());
         metaLb.setVerticalAlignment(JLabel.TOP);
@@ -184,7 +192,8 @@ public class Admin extends javax.swing.JPanel {
                 }
                 boolean sel = selectedGridNim != null && selectedGridNim.equals(n);
                 card.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(sel ? new Color(0, 102, 204) : new Color(220, 224, 232), sel ? 2 : 1),
+                        BorderFactory.createLineBorder(sel ? new Color(0, 102, 204) : new Color(220, 224, 232),
+                                sel ? 2 : 1),
                         BorderFactory.createEmptyBorder(10, 12, 10, 12)));
             }
         }
@@ -198,19 +207,24 @@ public class Admin extends javax.swing.JPanel {
         editingNimOriginal = selectedGridNim;
         txtNIM.setText(selectedGridNim);
         jTextField2.setText(nullToEmpty(m.getNama()));
+        txtPassword.setText(nullToEmpty(m.getPassword()));
+        txtEmail.setText(nullToEmpty(m.getEmail()));
         setComboJurusan(m.getJurusan());
         updateGridCardBorders();
     }
+
     private void setupSearchField() {
         jTextField3.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
                 applySearchFilter();
             }
+
             @Override
             public void removeUpdate(DocumentEvent e) {
                 applySearchFilter();
             }
+
             @Override
             public void changedUpdate(DocumentEvent e) {
                 applySearchFilter();
@@ -223,6 +237,7 @@ public class Admin extends javax.swing.JPanel {
                     jTextField3.setText("");
                 }
             }
+
             @Override
             public void focusLost(java.awt.event.FocusEvent e) {
                 if (jTextField3.getText().trim().isEmpty()) {
@@ -231,6 +246,7 @@ public class Admin extends javax.swing.JPanel {
             }
         });
     }
+
     private void wireActions() {
         jButton5.addActionListener(e -> onSaveMahasiswa());
         jButton6.addActionListener(e -> onUpdateMahasiswa());
@@ -244,6 +260,7 @@ public class Admin extends javax.swing.JPanel {
         }
         return t.toLowerCase();
     }
+
     private boolean rowMatchesSearch(Mahasiswa m, String q) {
         if (q.isEmpty()) {
             return true;
@@ -254,6 +271,7 @@ public class Admin extends javax.swing.JPanel {
         String jur = m.getJurusan() != null ? m.getJurusan().toLowerCase() : "";
         return nim.contains(q) || id.contains(q) || nama.contains(q) || jur.contains(q);
     }
+
     private void applySearchFilter() {
         String q = searchQueryNormalized();
         if (mahasiswaListPanel == null) {
@@ -305,9 +323,11 @@ public class Admin extends javax.swing.JPanel {
             updateGridCardBorders();
         }
     }
+
     private static String nullToEmpty(String s) {
         return s == null ? "" : s;
     }
+
     private void reloadMahasiswaFromDb() {
         try {
             // Muat data hanya dari koleksi 'mahasiswa'
@@ -321,6 +341,7 @@ public class Admin extends javax.swing.JPanel {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private void setComboJurusan(String jurusan) {
         if (jurusan == null || jurusan.isEmpty()) {
             CB_Jurusan.setSelectedIndex(0);
@@ -334,9 +355,12 @@ public class Admin extends javax.swing.JPanel {
         }
         CB_Jurusan.setSelectedIndex(0);
     }
+
     private void clearFormMahasiswa() {
         txtNIM.setText("");
         jTextField2.setText("");
+        txtPassword.setText("");
+        txtEmail.setText("");
         if (CB_Jurusan.getItemCount() > 0) {
             CB_Jurusan.setSelectedIndex(0);
         }
@@ -344,13 +368,17 @@ public class Admin extends javax.swing.JPanel {
         editingNimOriginal = null;
         updateGridCardBorders();
     }
+
     private Mahasiswa readMahasiswaFromForm() {
         String nim = txtNIM.getText().trim();
         String nama = jTextField2.getText().trim();
+        String password = txtPassword.getText().trim();
+        String email = txtEmail.getText().trim();
         Object jurObj = CB_Jurusan.getSelectedItem();
         String jurusan = jurObj != null ? jurObj.toString() : "";
-        return new Mahasiswa(nim, "", nama, jurusan);
+        return new Mahasiswa(nim, "", nama, jurusan, password, email);
     }
+
     private void onSaveMahasiswa() {
         Mahasiswa m = readMahasiswaFromForm();
         if (m.getNim().isEmpty()) {
@@ -371,14 +399,17 @@ public class Admin extends javax.swing.JPanel {
                 return;
             }
             mahasiswaService.save(m);
-            JOptionPane.showMessageDialog(this, "Data mahasiswa disimpan.", "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Data mahasiswa disimpan.", "Berhasil",
+                    JOptionPane.INFORMATION_MESSAGE);
             reloadMahasiswaFromDb();
             clearFormMahasiswa();
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal menyimpan: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal menyimpan: " + ex.getMessage(), "Error",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private void onUpdateMahasiswa() {
         if (editingNimOriginal == null || editingNimOriginal.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -399,19 +430,23 @@ public class Admin extends javax.swing.JPanel {
         m.setJurusan(DaftarJurusan.toCanonical(m.getJurusan()));
         try {
             if (!m.getNim().equals(editingNimOriginal) && mahasiswaService.findByNim(m.getNim()) != null) {
-                JOptionPane.showMessageDialog(this, "NIM baru sudah dipakai mahasiswa lain.", "Duplikat", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "NIM baru sudah dipakai mahasiswa lain.", "Duplikat",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
             mahasiswaService.updateByNim(editingNimOriginal, m);
-            JOptionPane.showMessageDialog(this, "Data mahasiswa diperbarui.", "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Data mahasiswa diperbarui.", "Berhasil",
+                    JOptionPane.INFORMATION_MESSAGE);
             editingNimOriginal = m.getNim();
             reloadMahasiswaFromDb();
             selectRowByNim(m.getNim());
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal memperbarui: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal memperbarui: " + ex.getMessage(), "Error",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private void selectRowByNim(String nim) {
         if (nim == null || mahasiswaListPanel == null) {
             return;
@@ -440,6 +475,7 @@ public class Admin extends javax.swing.JPanel {
             }
         }
     }
+
     private void hapusMahasiswaByNim(String nim) {
         if (nim == null || nim.isEmpty()) {
             return;
@@ -457,7 +493,8 @@ public class Admin extends javax.swing.JPanel {
             clearFormMahasiswa();
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal menghapus: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal menghapus: " + ex.getMessage(), "Error",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -467,6 +504,7 @@ public class Admin extends javax.swing.JPanel {
      * regenerated by the Form Editor.
      */
     @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -486,6 +524,10 @@ public class Admin extends javax.swing.JPanel {
         jPanelMahasiswaList = new javax.swing.JPanel();
         jLabelMahasiswaGridHint = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
+        jLabelPassword = new javax.swing.JLabel();
+        txtPassword = new javax.swing.JTextField();
+        jLabelEmail = new javax.swing.JLabel();
+        txtEmail = new javax.swing.JTextField();
 
         jPanel1.setBackground(new java.awt.Color(255, 255, 255));
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -506,22 +548,22 @@ public class Admin extends javax.swing.JPanel {
         jButton5.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jButton5.setForeground(new java.awt.Color(255, 255, 255));
         jButton5.setText("Add");
-        jPanel1.add(jButton5, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 52, 130, -1));
+        jPanel1.add(jButton5, new org.netbeans.lib.awtextra.AbsoluteConstraints(860, 50, 130, -1));
 
         jButton6.setBackground(new java.awt.Color(204, 204, 204));
         jButton6.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jButton6.setForeground(new java.awt.Color(102, 102, 102));
         jButton6.setText("Update");
-        jPanel1.add(jButton6, new org.netbeans.lib.awtextra.AbsoluteConstraints(980, 52, 130, 25));
+        jPanel1.add(jButton6, new org.netbeans.lib.awtextra.AbsoluteConstraints(1000, 50, 130, 25));
 
         jButton7.setBackground(new java.awt.Color(0, 204, 0));
         jButton7.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jButton7.setForeground(new java.awt.Color(255, 255, 255));
         jButton7.setText("Refresh");
-        jPanel1.add(jButton7, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 90, 270, -1));
+        jPanel1.add(jButton7, new org.netbeans.lib.awtextra.AbsoluteConstraints(860, 80, 270, -1));
 
         jTextField3.setText("Search");
-        jPanel1.add(jTextField3, new org.netbeans.lib.awtextra.AbsoluteConstraints(420, 110, 350, 40));
+        jPanel1.add(jTextField3, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 110, 350, 40));
 
         jPanel3.setBackground(new java.awt.Color(255, 255, 255));
         jPanel3.setLayout(new java.awt.BorderLayout());
@@ -532,16 +574,30 @@ public class Admin extends javax.swing.JPanel {
         jPanelMahasiswaList.setLayout(new javax.swing.BoxLayout(jPanelMahasiswaList, javax.swing.BoxLayout.Y_AXIS));
 
         jLabelMahasiswaGridHint.setText("Grid kartu mahasiswa (Add / Refresh memuat dari database)");
-        jLabelMahasiswaGridHint.setAlignmentX(0.0F);
         jPanelMahasiswaList.add(jLabelMahasiswaGridHint);
 
         jScrollPaneMahasiswa.setViewportView(jPanelMahasiswaList);
+
         jPanel3.add(jScrollPaneMahasiswa, java.awt.BorderLayout.CENTER);
 
         jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 172, 1870, 1028));
 
         jLabel5.setText("Jurusan ");
         jPanel1.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(50, 110, 90, 30));
+
+        jLabelPassword.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jLabelPassword.setText("Password");
+        jPanel1.add(jLabelPassword, new org.netbeans.lib.awtextra.AbsoluteConstraints(370, 110, 70, 30));
+
+        txtPassword.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jPanel1.add(txtPassword, new org.netbeans.lib.awtextra.AbsoluteConstraints(440, 110, 120, 40));
+
+        jLabelEmail.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jLabelEmail.setText("Email");
+        jPanel1.add(jLabelEmail, new org.netbeans.lib.awtextra.AbsoluteConstraints(570, 110, 50, 30));
+
+        txtEmail.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jPanel1.add(txtEmail, new org.netbeans.lib.awtextra.AbsoluteConstraints(620, 110, 160, 40));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -568,14 +624,18 @@ public class Admin extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabelEmail;
+    private javax.swing.JLabel jLabelMahasiswaGridHint;
+    private javax.swing.JLabel jLabelPassword;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanelMahasiswaList;
     private javax.swing.JScrollPane jScrollPaneMahasiswa;
-    private javax.swing.JLabel jLabelMahasiswaGridHint;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTextField jTextField2;
     private javax.swing.JTextField jTextField3;
+    private javax.swing.JTextField txtEmail;
     private javax.swing.JTextField txtNIM;
+    private javax.swing.JTextField txtPassword;
     // End of variables declaration//GEN-END:variables
 }

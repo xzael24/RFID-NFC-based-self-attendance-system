@@ -4,10 +4,8 @@
  */
 package com.mycompany.sesuaitugas.gui;
 
-import com.mycompany.sesuaitugas.objects.LoginService;
 import com.mycompany.sesuaitugas.objects.User;
-
-import java.awt.event.ActionEvent;
+import com.mycompany.sesuaitugas.services.LoginService;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -31,7 +29,7 @@ public class Login extends javax.swing.JFrame {
         initComponents();
         loginService = new LoginService();
         loginService.ensureDefaultAdmin();
-        loginService.ensureDefaultUsers();
+        loginService.ensureDefaultMahasiswa();
         setupListeners();
         setupPlaceholders();
     }
@@ -78,7 +76,7 @@ public class Login extends javax.swing.JFrame {
         jLabel3.setText("Kata Sandi");
 
         jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
-        jLabel4.setText("Masukan Email");
+        jLabel4.setText("Masukan NIM / Email");
 
         jPasswordField1.setText("jPasswordField1");
 
@@ -116,7 +114,7 @@ public class Login extends javax.swing.JFrame {
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGap(157, 157, 157)
                         .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 295, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(33, Short.MAX_VALUE))
+                .addContainerGap(99, Short.MAX_VALUE))
             .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(jPanel2Layout.createSequentialGroup()
                     .addGap(57, 57, 57)
@@ -157,7 +155,7 @@ public class Login extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(432, 432, 432)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(966, Short.MAX_VALUE))
+                .addContainerGap(900, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -316,38 +314,68 @@ public class Login extends javax.swing.JFrame {
             return;
         }
 
-        // Autentikasi
-        User user = loginService.authenticate(email, password);
+        // 1) Coba autentikasi sebagai admin (koleksi admin, pakai email)
+        User adminUser = loginService.authenticate(email, password);
+        if (adminUser != null) {
+            openAdminDashboard(adminUser);
+            return;
+        }
 
-        if (user != null) {
-            String greet = user.getNama() != null && !user.getNama().trim().isEmpty()
-                    ? user.getNama().trim()
-                    : user.getEmail();
-            JOptionPane.showMessageDialog(this,
-                    "Login berhasil! Selamat datang, " + greet,
-                    "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+        // 2) Coba autentikasi sebagai mahasiswa (koleksi mahasiswa, pakai NIM + password)
+        com.mycompany.sesuaitugas.objects.Mahasiswa mhs = loginService.authenticateMahasiswa(email, password);
+        if (mhs != null) {
+            openMahasiswaPage(mhs);
+            return;
+        }
 
-            try {
-                JFrame adminFrame = new JFrame("Admin Dashboard");
-                adminFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                adminFrame.setContentPane(new Admin(user));
-                adminFrame.pack();
-                adminFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-                adminFrame.setLocationRelativeTo(null);
-                adminFrame.setVisible(true);
-                this.dispose();
-            } catch (Throwable ex) {
-                logger.log(java.util.logging.Level.SEVERE, "Gagal membuka halaman Admin", ex);
-                JOptionPane.showMessageDialog(this,
-                        "Gagal membuka halaman admin: " + ex.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } else {
+        // 3) Gagal
+        JOptionPane.showMessageDialog(this,
+                "Email/NIM atau kata sandi salah. Silakan coba lagi.",
+                "Login Gagal", JOptionPane.ERROR_MESSAGE);
+        jPasswordField1.setText("");
+        jPasswordField1.requestFocus();
+    }
+
+    private void openAdminDashboard(User user) {
+        String greet = user.getNama() != null && !user.getNama().trim().isEmpty()
+                ? user.getNama().trim()
+                : user.getEmail();
+        JOptionPane.showMessageDialog(this,
+                "Login berhasil! Selamat datang, " + greet + " (Admin)",
+                "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+        try {
+            JFrame adminFrame = new JFrame("Admin Dashboard");
+            adminFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            adminFrame.setContentPane(new Admin(user));
+            adminFrame.pack();
+            adminFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            adminFrame.setLocationRelativeTo(null);
+            adminFrame.setVisible(true);
+            this.dispose();
+        } catch (Throwable ex) {
+            logger.log(java.util.logging.Level.SEVERE, "Gagal membuka halaman Admin", ex);
             JOptionPane.showMessageDialog(this,
-                    "Email atau kata sandi salah. Silakan coba lagi.",
-                    "Login Gagal", JOptionPane.ERROR_MESSAGE);
-            jPasswordField1.setText("");
-            jPasswordField1.requestFocus();
+                    "Gagal membuka halaman admin: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void openMahasiswaPage(com.mycompany.sesuaitugas.objects.Mahasiswa mhs) {
+        String greet = mhs.getNama() != null && !mhs.getNama().trim().isEmpty()
+                ? mhs.getNama().trim()
+                : mhs.getNim();
+        JOptionPane.showMessageDialog(this,
+                "Login berhasil! Selamat datang, " + greet + " (Mahasiswa)",
+                "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+        try {
+            Mahasiswa mahasiswaFrame = new Mahasiswa();
+            mahasiswaFrame.setVisible(true);
+            this.dispose();
+        } catch (Throwable ex) {
+            logger.log(java.util.logging.Level.SEVERE, "Gagal membuka halaman Mahasiswa", ex);
+            JOptionPane.showMessageDialog(this,
+                    "Gagal membuka halaman mahasiswa: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

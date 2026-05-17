@@ -1,8 +1,9 @@
-package com.mycompany.sesuaitugas.objects;
+package com.mycompany.sesuaitugas.services;
 
+import com.mycompany.sesuaitugas.dao.GenericDAO;
+import com.mycompany.sesuaitugas.objects.Mahasiswa;
 import com.mongodb.client.model.Filters;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * CRUD mahasiswa pada koleksi {@code mahasiswa}.
@@ -26,13 +27,32 @@ public class MahasiswaService {
         return dao.findOne(Filters.eq("nim", nim.trim()));
     }
 
-    private static String generateIdMahasiswa() {
-        return "MHS-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+    public Mahasiswa findByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return null;
+        }
+        return dao.findOne(Filters.eq("email", email.trim()));
+    }
+
+    private int getNextIdMahasiswa() {
+        List<Mahasiswa> all = dao.findAll();
+        int maxId = 0;
+        for (Mahasiswa m : all) {
+            try {
+                int current = Integer.parseInt(m.getIdMahasiswa());
+                if (current > maxId) {
+                    maxId = current;
+                }
+            } catch (NumberFormatException e) {
+                // skip non-numeric IDs
+            }
+        }
+        return maxId + 1;
     }
 
     public void save(Mahasiswa m) {
         if (m.getIdMahasiswa() == null || m.getIdMahasiswa().trim().isEmpty()) {
-            m.setIdMahasiswa(generateIdMahasiswa());
+            m.setIdMahasiswa(String.valueOf(getNextIdMahasiswa()));
         }
         dao.save(m);
     }
@@ -44,7 +64,7 @@ public class MahasiswaService {
             if (old != null && old.getIdMahasiswa() != null && !old.getIdMahasiswa().trim().isEmpty()) {
                 dataBaru.setIdMahasiswa(old.getIdMahasiswa());
             } else {
-                dataBaru.setIdMahasiswa(generateIdMahasiswa());
+                dataBaru.setIdMahasiswa(String.valueOf(getNextIdMahasiswa()));
             }
         }
         dao.update(Filters.eq("nim", nimLama.trim()), dataBaru);

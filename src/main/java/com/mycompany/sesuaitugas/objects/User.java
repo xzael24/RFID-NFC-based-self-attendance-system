@@ -1,11 +1,21 @@
 package com.mycompany.sesuaitugas.objects;
 
-/**
- * Model User untuk autentikasi login admin.
- * Disimpan di koleksi "users" pada MongoDB.
- */
-public class User {
+import com.mycompany.sesuaitugas.dao.Identifiable;
+import org.bson.codecs.pojo.annotations.BsonId;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
+import org.bson.codecs.pojo.annotations.BsonProperty;
+import org.bson.types.ObjectId;
 
+/**
+ * Model User untuk autentikasi login admin/mahasiswa.
+ * Disimpan di koleksi "admin" pada MongoDB.
+ * Mengimplementasikan {@link Identifiable} agar dapat dikelola oleh
+ * {@link GenericDAO}.
+ */
+public class User implements Identifiable {
+
+    @BsonId
+    private ObjectId _id;
     private String email;
     private String password;
     private String role; // "admin" atau "user"
@@ -35,6 +45,13 @@ public class User {
         this.role = role;
         this.jurusan = jurusan;
         this.nama = nama;
+    }
+
+    /** {@inheritDoc} - mengembalikan {@code email} sebagai ID unik entitas ini. */
+    @BsonIgnore
+    @Override
+    public String getId() {
+        return email;
     }
 
     // ─── Getters & Setters ───
@@ -89,12 +106,7 @@ public class User {
 
     @Override
     public String toString() {
-        return "User{" +
-                "email='" + email + '\'' +
-                ", nama='" + nama + '\'' +
-                ", nim='" + nim + '\'' +
-                ", role='" + role + '\'' +
-                ", jurusan='" + jurusan + '\'' +
-                '}';
+        return "User{email='" + email + "', nama='" + nama + "', nim='" + nim
+                + "', role='" + role + "', jurusan='" + jurusan + "'}";
     }
 }
