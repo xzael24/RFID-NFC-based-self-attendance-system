@@ -67,8 +67,22 @@ public class MahasiswaService {
      * hash email terpisah.
      * </p>
      */
-    public Mahasiswa findByEmail(String email) {
-        if (email == null || email.trim().isEmpty()) {
+    /**
+     * Cari mahasiswa berdasarkan hash UID RFID.
+     * Query langsung ke MongoDB karena rfidHash bersifat deterministik.
+     */
+    public Mahasiswa findByRfidHash(String rfidHash) {
+        if (rfidHash == null || rfidHash.trim().isEmpty()) {
+            return null;
+        }
+        Mahasiswa m = dao.findOne(Filters.eq("rfidHash", rfidHash.trim()));
+        if (m != null) {
+            decryptFields(m);
+        }
+        return m;
+    }
+
+    public Mahasiswa findByEmail(String email) {        if (email == null || email.trim().isEmpty()) {
             return null;
         }
         String emailNormalized = email.trim().toLowerCase();

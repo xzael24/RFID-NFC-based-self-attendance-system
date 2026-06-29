@@ -121,6 +121,16 @@ public class LoginService {
         // Verifikasi password menggunakan MahasiswaService
         // (yang menangani hash / plaintext lama secara transparan)
         boolean match = mahasiswaService.verifyPassword(password, mhs.getPassword());
+        if (match && mhs.getRsaEncryptedPrivateKey() != null && !mhs.getRsaEncryptedPrivateKey().isEmpty()) {
+            try {
+                java.security.PrivateKey privKey =
+                        com.mycompany.sesuaitugas.util.CryptoUtil.decryptPrivateKey(
+                                mhs.getRsaEncryptedPrivateKey(), password);
+                mhs.setTransientPrivateKey(privKey);
+            } catch (Exception e) {
+                System.err.println("RSA decrypt gagal untuk " + mhs.getNim() + ": " + e.getMessage());
+            }
+        }
         return match ? mhs : null;
     }
 

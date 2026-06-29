@@ -8,60 +8,44 @@ import java.util.Base64;
 /**
  * Utilitas hashing 1 arah menggunakan SHA-256.
  *
- * <p>
- * Digunakan untuk:
+ * <p>Dua mode hashing tersedia:</p>
  * <ul>
- *   <li>Password mahasiswa dan admin — tidak perlu pernah dibaca balik,
- *       cukup dibandingkan hash-nya saat login.</li>
- *   <li>UID kartu RFID — disimpan sebagai hash sehingga raw UID tidak bocor
- *       meskipun database diakses pihak lain.</li>
+ *   <li>{@link #hash(String)} — dengan salt acak (untuk password). Hasil berbeda
+ *       tiap panggilan; verifikasi hanya lewat {@link #verify(String, String)}.</li>
+ *   <li>{@link #hashDeterministic(String)} — tanpa salt (untuk UID RFID). Hasil
+ *       selalu sama untuk input yang sama; bisa langsung dicari di DB.</li>
  * </ul>
- * </p>
- *
- * <p>
- * <b>Format hash:</b> {@code SALT:HASH} — salt 16-byte acak di-encode Base64,
- * dipisahkan titik dua dari SHA-256 hash (juga Base64). Salt memastikan dua
- * password yang sama menghasilkan hash yang berbeda (anti rainbow-table).
- * </p>
- *
- * <p><b>Contoh penggunaan:</b></p>
- * <pre>
- * String hashed = HashUtil.hash("student123");
- * boolean cocok = HashUtil.verify("student123", hashed); // true
- * </pre>
  */
 public final class HashUtil {
 
     private static final String ALGORITHM = "SHA-256";
     private static final String SEPARATOR = ":";
 
-    /** Cegah instantiasi. */
     private HashUtil() {
     }
 
+    // ─── Hash dengan salt (untuk password) ───────────────────────────────────
+
     /**
      * Menghasilkan hash SHA-256 dari {@code plaintext} dengan salt acak.
+     * Format hasil: {@code BASE64_SALT:BASE64_HASH}
      *
-     * @param plaintext teks asli yang akan di-hash (password / UID RFID)
-     * @return string format {@code BASE64_SALT:BASE64_HASH}, atau {@code null}
-     *         jika input null/kosong
+     * @param plaintext teks asli yang akan di-hash
+     * @return string hash, atau {@code null} jika input null/kosong
      */
     public static String hash(String plaintext) {
         if (plaintext == null || plaintext.isEmpty()) {
             return null;
         }
         try {
-            // Buat salt acak 16 byte
             SecureRandom random = new SecureRandom();
             byte[] salt = new byte[16];
             random.nextBytes(salt);
 
-            // Hash plaintext + salt
             MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
             digest.update(salt);
             byte[] hashBytes = digest.digest(plaintext.getBytes("UTF-8"));
 
-            // Encode ke Base64 dan gabungkan
             String saltB64 = Base64.getEncoder().encodeToString(salt);
             String hashB64 = Base64.getEncoder().encodeToString(hashBytes);
             return saltB64 + SEPARATOR + hashB64;
@@ -74,15 +58,9 @@ public final class HashUtil {
     /**
      * Memverifikasi apakah {@code plaintext} cocok dengan {@code storedHash}.
      *
-     * <p>
-     * Mengekstrak salt dari {@code storedHash}, lalu meng-hash ulang
-     * {@code plaintext} dengan salt yang sama dan membandingkan hasilnya.
-     * </p>
-     *
-     * @param plaintext  teks asli yang diinput pengguna
+     * @param plaintext  teks asli dari form login
      * @param storedHash hash yang tersimpan di database (format {@code SALT:HASH})
-     * @return {@code true} jika cocok, {@code false} jika tidak cocok atau input
-     *         tidak valid
+     * @return {@code true} jika cocok
      */
     public static boolean verify(String plaintext, String storedHash) {
         if (plaintext == null || plaintext.isEmpty()
@@ -90,20 +68,17 @@ public final class HashUtil {
             return false;
         }
         try {
-            // Pisahkan salt dan hash
             String[] parts = storedHash.split(SEPARATOR, 2);
             if (parts.length != 2) {
                 return false;
             }
-            byte[] salt = Base64.getDecoder().decode(parts[0]);
+            byte[] salt         = Base64.getDecoder().decode(parts[0]);
             byte[] expectedHash = Base64.getDecoder().decode(parts[1]);
 
-            // Hash ulang plaintext dengan salt yang sama
             MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
             digest.update(salt);
             byte[] actualHash = digest.digest(plaintext.getBytes("UTF-8"));
 
-            // Bandingkan byte per byte (constant-time untuk cegah timing attack)
             return MessageDigest.isEqual(expectedHash, actualHash);
 
         } catch (Exception e) {
@@ -112,16 +87,11 @@ public final class HashUtil {
     }
 
     /**
-     * Mendeteksi apakah sebuah string sudah dalam format hash ({@code SALT:HASH})
-     * atau masih plaintext.
-     *
-     * <p>
-     * Berguna saat migrasi data lama yang masih plaintext — agar tidak di-hash
-     * dua kali.
-     * </p>
+     * Mendeteksi apakah sebuah string sudah dalam format hash ({@code SALT:HASH}).
+     * Berguna untuk backward-compatibility saat migrasi data plaintext lama.
      *
      * @param value string yang akan dicek
-     * @return {@code true} jika sudah berbentuk hash, {@code false} jika plaintext
+     * @return {@code true} jika sudah berbentuk hash
      */
     public static boolean isHashed(String value) {
         if (value == null || value.isEmpty()) {
@@ -133,11 +103,45 @@ public final class HashUtil {
         }
         try {
             Base64.getDecoder().decode(parts[0]);
-            Base64.getDecoder().decode(parts[1]);
             // Hash SHA-256 = 32 byte = 44 karakter Base64
             return Base64.getDecoder().decode(parts[1]).length == 32;
         } catch (IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    // ─── Hash deterministik tanpa salt (untuk UID RFID) ──────────────────────
+
+    /**
+     * Hash SHA-256 <b>deterministik tanpa salt</b> — khusus untuk UID kartu RFID.
+     *
+     * <p>Berbeda dengan {@link #hash(String)}, method ini menghasilkan hash yang
+     * sama untuk input yang sama sehingga UID bisa langsung dicari di MongoDB
+     * dengan membandingkan hash.</p>
+     *
+     * <p><b>Catatan keamanan:</b> Karena tanpa salt, rentan rainbow table jika
+     * UID pendek. Untuk RFID ini masih dapat diterima — UID bukan password dan
+     * serangan fisik ke kartu lebih relevan dari serangan DB.</p>
+     *
+     * @param plaintext UID mentah (sebaiknya normalized ke uppercase)
+     * @return string hex 64 karakter (SHA-256), atau {@code null} jika input kosong
+     */
+    public static String hashDeterministic(String plaintext) {
+        if (plaintext == null || plaintext.isEmpty()) {
+            return null;
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
+            byte[] hashBytes = digest.digest(plaintext.getBytes("UTF-8"));
+
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashBytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+
+        } catch (NoSuchAlgorithmException | java.io.UnsupportedEncodingException e) {
+            throw new RuntimeException("Gagal hashing deterministik: " + e.getMessage(), e);
         }
     }
 }

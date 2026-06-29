@@ -194,4 +194,125 @@ public final class CryptoUtil {
             return false;
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  RSA Asymmetric Encryption — Digital Signature untuk Absensi
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private static final String RSA_SIGN_ALGO = "SHA256withRSA";
+    private static final String RSA_CIPHER = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
+    private static final int RSA_KEY_SIZE = 2048;
+
+    /** Generate RSA-2048 keypair. */
+    public static java.security.KeyPair generateRsaKeyPair() {
+        try {
+            java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("RSA");
+            gen.initialize(RSA_KEY_SIZE, new SecureRandom());
+            return gen.generateKeyPair();
+        } catch (Exception e) {
+            throw new RuntimeException("Gagal generate RSA keypair: " + e.getMessage(), e);
+        }
+    }
+
+    /** Tanda tangani data dengan private key RSA (SHA256withRSA). */
+    public static String rsaSign(String data, java.security.PrivateKey privKey) {
+        try {
+            java.security.Signature sig = java.security.Signature.getInstance(RSA_SIGN_ALGO);
+            sig.initSign(privKey);
+            sig.update(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(sig.sign());
+        } catch (Exception e) {
+            throw new RuntimeException("Gagal RSA sign: " + e.getMessage(), e);
+        }
+    }
+
+    /** Verifikasi signature digital dengan public key RSA. */
+    public static boolean rsaVerify(String data, String signatureB64, java.security.PublicKey pubKey) {
+        try {
+            java.security.Signature sig = java.security.Signature.getInstance(RSA_SIGN_ALGO);
+            sig.initVerify(pubKey);
+            sig.update(data.getBytes(StandardCharsets.UTF_8));
+            return sig.verify(Base64.getDecoder().decode(signatureB64));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Serialisasi PublicKey atau PrivateKey ke Base64 (X.509 / PKCS8). */
+    public static String keyToString(java.security.Key key) {
+        return Base64.getEncoder().encodeToString(key.getEncoded());
+    }
+
+    /** Deserialisasi PublicKey dari Base64 (X.509). */
+    public static java.security.PublicKey stringToPublicKey(String b64) {
+        try {
+            byte[] encoded = Base64.getDecoder().decode(b64);
+            java.security.KeyFactory kf = java.security.KeyFactory.getInstance("RSA");
+            return kf.generatePublic(new java.security.spec.X509EncodedKeySpec(encoded));
+        } catch (Exception e) {
+            throw new RuntimeException("Gagal parse public key: " + e.getMessage(), e);
+        }
+    }
+
+    /** Deserialisasi PrivateKey dari Base64 (PKCS8). */
+    public static java.security.PrivateKey stringToPrivateKey(String b64) {
+        try {
+            byte[] encoded = Base64.getDecoder().decode(b64);
+            java.security.KeyFactory kf = java.security.KeyFactory.getInstance("RSA");
+            return kf.generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(encoded));
+        } catch (Exception e) {
+            throw new RuntimeException("Gagal parse private key: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Enkripsi private key dengan password menggunakan AES-256-GCM (PBKDF2 derived key).
+     * Format output: base64(salt):base64(iv):base64(encrypted_private_key)
+     */
+    public static String encryptPrivateKey(java.security.PrivateKey privKey, String password) {
+        try {
+            byte[] salt = new byte[16]; new SecureRandom().nextBytes(salt);
+            byte[] iv = new byte[12]; new SecureRandom().nextBytes(iv);
+            javax.crypto.SecretKeyFactory factory = javax.crypto.SecretKeyFactory.getInstance(KDF_ALGO);
+            javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(
+                    password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
+            byte[] keyBytes = factory.generateSecret(spec).getEncoded();
+            spec.clearPassword();
+            javax.crypto.SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(keyBytes, KEY_ALGO);
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance(CIPHER_ALGO);
+            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, aesKey, new javax.crypto.spec.GCMParameterSpec(GCM_TAG_BITS, iv));
+            byte[] encPriv = cipher.doFinal(privKey.getEncoded());
+            return Base64.getEncoder().encodeToString(salt) + SEPARATOR
+                 + Base64.getEncoder().encodeToString(iv) + SEPARATOR
+                 + Base64.getEncoder().encodeToString(encPriv);
+        } catch (Exception e) {
+            throw new RuntimeException("Gagal encrypt private key: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Dekripsi private key yang dienkripsi dengan {@link #encryptPrivateKey}.
+     * Format input: base64(salt):base64(iv):base64(cipher)
+     */
+    public static java.security.PrivateKey decryptPrivateKey(String encryptedB64, String password) {
+        try {
+            String[] parts = encryptedB64.split(SEPARATOR, 3);
+            byte[] salt = Base64.getDecoder().decode(parts[0]);
+            byte[] iv = Base64.getDecoder().decode(parts[1]);
+            byte[] encPriv = Base64.getDecoder().decode(parts[2]);
+            javax.crypto.SecretKeyFactory factory = javax.crypto.SecretKeyFactory.getInstance(KDF_ALGO);
+            javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(
+                    password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
+            byte[] keyBytes = factory.generateSecret(spec).getEncoded();
+            spec.clearPassword();
+            javax.crypto.SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(keyBytes, KEY_ALGO);
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance(CIPHER_ALGO);
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, aesKey, new javax.crypto.spec.GCMParameterSpec(GCM_TAG_BITS, iv));
+            byte[] privBytes = cipher.doFinal(encPriv);
+            java.security.KeyFactory kf = java.security.KeyFactory.getInstance("RSA");
+            return kf.generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(privBytes));
+        } catch (Exception e) {
+            throw new RuntimeException("Gagal decrypt private key (password salah?): " + e.getMessage(), e);
+        }
+    }
 }

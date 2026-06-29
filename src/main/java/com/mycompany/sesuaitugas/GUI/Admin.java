@@ -1,14 +1,14 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package com.mycompany.sesuaitugas.gui;
 
 import com.mycompany.sesuaitugas.objects.DaftarJurusan;
 import com.mycompany.sesuaitugas.objects.Mahasiswa;
 import com.mycompany.sesuaitugas.objects.User;
+import com.mycompany.sesuaitugas.services.AbsensiService;
 import com.mycompany.sesuaitugas.services.MahasiswaService;
+import com.mycompany.sesuaitugas.util.RfidSerialListener;
+import com.mycompany.sesuaitugas.util.I18nManager;
 
+import java.util.Locale;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -26,51 +26,54 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- *
- * @author ASUS
- */
 public class Admin extends javax.swing.JPanel {
     private static final String SEARCH_PLACEHOLDER = "Search";
     private static final int MAHASISWA_GRID_COLS = 4;
     private static final Dimension MAHASISWA_CARD_SIZE = new Dimension(220, 168);
-    /** Pengguna yang sedang login; boleh null. */
     private User sessionUser;
     private JLabel jLabelSessionBanner;
     private final MahasiswaService mahasiswaService = new MahasiswaService();
-    /** Panel vertikal berisi baris-baris kartu mahasiswa (di dalam scroll). */
+    private final AbsensiService absensiService = new AbsensiService();
     private JPanel mahasiswaListPanel;
-    /** NIM kartu yang sedang dipilih di grid (sinkron dengan form). */
     private String selectedGridNim;
-    /** NIM baris yang sedang diedit (null jika form kosong / baru). */
     private String editingNimOriginal;
     private List<Mahasiswa> mahasiswaCache = new ArrayList<>();
+    private RfidSerialListener rfidRegistrasiListener;
 
-    /**
-     * Creates new form Admin (tanpa info sesi).
-     */
-    public Admin() {
-        this(null);
-    }
+    public Admin() { this(null); }
 
-    /**
-     * @param sessionUser pengguna yang login; dipakai untuk teks role di dashboard.
-     */
     public Admin(User sessionUser) {
         this.sessionUser = sessionUser;
         initComponents();
         installSessionBanner();
+        addLanguageButtonsAdmin();
         CB_Jurusan.setModel(new DefaultComboBoxModel<>(DaftarJurusan.PILIHAN));
         setupMahasiswaGrid();
         setupSearchField();
+        populateRfidPortCombo();
         wireActions();
         reloadMahasiswaFromDb();
+        refreshUITextAdmin();
     }
 
-
+    private void populateRfidPortCombo() {
+        try {
+            String[] ports = RfidSerialListener.getAvailablePorts();
+            if (ports.length == 0) {
+                cbRfidPort.setModel(new DefaultComboBoxModel<>(new String[]{"(Tidak ada port)"}));
+                btnRfidConnect.setEnabled(false);
+            } else {
+                cbRfidPort.setModel(new DefaultComboBoxModel<>(ports));
+            }
+        } catch (Throwable t) {
+            cbRfidPort.setModel(new DefaultComboBoxModel<>(new String[]{"(Library tidak tersedia)"}));
+            btnRfidConnect.setEnabled(false);
+        }
+    }
 
     private void installSessionBanner() {
         jLabelSessionBanner = new JLabel();
@@ -80,38 +83,25 @@ public class Admin extends javax.swing.JPanel {
             String roleDb = sessionUser.getRole() != null ? sessionUser.getRole().trim() : "";
             String roleTampil = formatRoleTampilan(roleDb);
             String nama = sessionUser.getNama() != null && !sessionUser.getNama().trim().isEmpty()
-                    ? sessionUser.getNama().trim()
-                    : sessionUser.getEmail();
+                    ? sessionUser.getNama().trim() : sessionUser.getEmail();
             String nimTxt = sessionUser.getNim() != null && !sessionUser.getNim().trim().isEmpty()
-                    ? " · NIM " + sessionUser.getNim().trim()
-                    : "";
-            jLabelSessionBanner.setText("Dashboard · " + nama + " (" + sessionUser.getEmail() + ")" + nimTxt
-                    + "  |  Role (database): " + (roleDb.isEmpty() ? "-" : roleDb)
-                    + " (" + roleTampil + ")");
+                    ? " Â· NIM " + sessionUser.getNim().trim() : "";
+            jLabelSessionBanner.setText("Dashboard Â· " + nama + " (" + sessionUser.getEmail() + ")" + nimTxt
+                    + "  |  Role (database): " + (roleDb.isEmpty() ? "-" : roleDb) + " (" + roleTampil + ")");
         } else {
-            jLabelSessionBanner.setText("Dashboard · Role: - (belum ada data sesi login)");
+            jLabelSessionBanner.setText("Dashboard Â· Role: - (belum ada data sesi login)");
         }
         jPanel1.add(jLabelSessionBanner, new org.netbeans.lib.awtextra.AbsoluteConstraints(50, 6, 1400, 30));
     }
 
     private static String formatRoleTampilan(String roleDb) {
-        if (roleDb == null || roleDb.isEmpty()) {
-            return "-";
-        }
+        if (roleDb == null || roleDb.isEmpty()) return "-";
         String r = roleDb.toLowerCase();
-        if ("admin".equals(r)) {
-            return "Administrator";
-        }
-        if ("user".equals(r)) {
-            return "Mahasiswa";
-        }
+        if ("admin".equals(r)) return "Administrator";
+        if ("user".equals(r)) return "Mahasiswa";
         return roleDb;
     }
 
-    /**
-     * Panel daftar kartu ada di {@code Admin.form} ({@link #jPanelMahasiswaList})
-     * supaya tampil di NetBeans Design.
-     */
     private void setupMahasiswaGrid() {
         mahasiswaListPanel = jPanelMahasiswaList;
         mahasiswaListPanel.setBorder(BorderFactory.createEmptyBorder(10, 12, 14, 12));
@@ -132,77 +122,67 @@ public class Admin extends javax.swing.JPanel {
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(220, 224, 232), 1),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-
         JLabel nameLb = new JLabel(nullToEmpty(m.getNama()).isEmpty() ? "(Tanpa nama)" : nullToEmpty(m.getNama()));
         nameLb.setFont(nameLb.getFont().deriveFont(Font.BOLD, 14f));
         nameLb.setForeground(new Color(33, 37, 41));
         card.add(nameLb, BorderLayout.NORTH);
-
         StringBuilder sb = new StringBuilder();
         sb.append("<html><body style='width:190px;color:#555;font-size:11px'>");
         sb.append("<b>NIM</b> ").append(escapeHtml(nim)).append("<br/>");
         sb.append("<b>ID</b> ").append(escapeHtml(nullToEmpty(m.getIdMahasiswa()))).append("<br/>");
         sb.append("<b>Jurusan</b> ").append(escapeHtml(nullToEmpty(m.getJurusan()))).append("<br/>");
         sb.append("<b>Email</b> ").append(escapeHtml(nullToEmpty(m.getEmail()))).append("<br/>");
-        sb.append("<b>Password</b> ").append(escapeHtml(nullToEmpty(m.getPassword())));
+        sb.append("<br/><b>RFID</b> ").append(m.getRfidHash() != null && !m.getRfidHash().isEmpty()
+                ? "<span style='color:green'>&#10003; Terdaftar</span>" : "<span style='color:red'>&#10007; Belum</span>");
         sb.append("</body></html>");
         JLabel metaLb = new JLabel(sb.toString());
         metaLb.setVerticalAlignment(JLabel.TOP);
         card.add(metaLb, BorderLayout.CENTER);
-
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
         actions.setOpaque(false);
         JButton btnEdit = new JButton("Edit");
         btnEdit.setFont(btnEdit.getFont().deriveFont(11f));
         btnEdit.setToolTipText("Muat data ke form atas, lalu ubah dan tekan Update");
         btnEdit.addActionListener(e -> selectMahasiswaFromGrid(m));
+        JButton btnRiwayat = new JButton("Riwayat");
+        btnRiwayat.setFont(btnRiwayat.getFont().deriveFont(11f));
+        btnRiwayat.setForeground(new Color(0, 102, 204));
+        btnRiwayat.setToolTipText("Lihat riwayat absensi mahasiswa ini");
+        btnRiwayat.addActionListener(e -> showRiwayatAbsensi(m.getNim(), m.getNama()));
         JButton btnHapus = new JButton("Hapus");
         btnHapus.setFont(btnHapus.getFont().deriveFont(11f));
         btnHapus.addActionListener(e -> hapusMahasiswaByNim(nim));
         actions.add(btnEdit);
+        actions.add(btnRiwayat);
         actions.add(btnHapus);
         card.add(actions, BorderLayout.SOUTH);
-
         return card;
     }
 
     private static String escapeHtml(String s) {
-        if (s == null) {
-            return "";
-        }
+        if (s == null) return "";
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private void updateGridCardBorders() {
-        if (mahasiswaListPanel == null) {
-            return;
-        }
+        if (mahasiswaListPanel == null) return;
         for (Component rowComp : mahasiswaListPanel.getComponents()) {
-            if (!(rowComp instanceof JPanel)) {
-                continue;
-            }
+            if (!(rowComp instanceof JPanel)) continue;
             for (Component c : ((JPanel) rowComp).getComponents()) {
-                if (!(c instanceof JPanel)) {
-                    continue;
-                }
+                if (!(c instanceof JPanel)) continue;
                 JPanel card = (JPanel) c;
                 String n = (String) card.getClientProperty("nim");
-                if (n == null) {
-                    continue;
-                }
+                if (n == null) continue;
                 boolean sel = selectedGridNim != null && selectedGridNim.equals(n);
                 card.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(sel ? new Color(0, 102, 204) : new Color(220, 224, 232),
-                                sel ? 2 : 1),
+                        BorderFactory.createLineBorder(sel ? new Color(0, 102, 204) : new Color(220, 224, 232), sel ? 2 : 1),
                         BorderFactory.createEmptyBorder(10, 12, 10, 12)));
             }
         }
     }
 
     private void selectMahasiswaFromGrid(Mahasiswa m) {
-        if (m == null || m.getNim() == null || m.getNim().trim().isEmpty()) {
-            return;
-        }
+        if (m == null || m.getNim() == null || m.getNim().trim().isEmpty()) return;
         selectedGridNim = m.getNim().trim();
         editingNimOriginal = selectedGridNim;
         txtNIM.setText(selectedGridNim);
@@ -215,34 +195,16 @@ public class Admin extends javax.swing.JPanel {
 
     private void setupSearchField() {
         jTextField3.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                applySearchFilter();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                applySearchFilter();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                applySearchFilter();
-            }
+            @Override public void insertUpdate(DocumentEvent e) { applySearchFilter(); }
+            @Override public void removeUpdate(DocumentEvent e) { applySearchFilter(); }
+            @Override public void changedUpdate(DocumentEvent e) { applySearchFilter(); }
         });
         jTextField3.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                if (SEARCH_PLACEHOLDER.equals(jTextField3.getText())) {
-                    jTextField3.setText("");
-                }
+            @Override public void focusGained(java.awt.event.FocusEvent e) {
+                if (SEARCH_PLACEHOLDER.equals(jTextField3.getText())) jTextField3.setText("");
             }
-
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                if (jTextField3.getText().trim().isEmpty()) {
-                    jTextField3.setText(SEARCH_PLACEHOLDER);
-                }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                if (jTextField3.getText().trim().isEmpty()) jTextField3.setText(SEARCH_PLACEHOLDER);
             }
         });
     }
@@ -251,20 +213,82 @@ public class Admin extends javax.swing.JPanel {
         jButton5.addActionListener(e -> onSaveMahasiswa());
         jButton6.addActionListener(e -> onUpdateMahasiswa());
         jButton7.addActionListener(e -> reloadMahasiswaFromDb());
+        btnRfidConnect.addActionListener(e -> onToggleRfidRegistrasi());
+        btnDaftarRfid.addActionListener(e -> onDaftarkanRfid());
+        btnLogout.addActionListener(e -> onLogout());
+    }
+
+    private void onToggleRfidRegistrasi() {
+        if (rfidRegistrasiListener != null && rfidRegistrasiListener.isRunning()) {
+            rfidRegistrasiListener.stop();
+            rfidRegistrasiListener = null;
+            btnRfidConnect.setText("Hubungkan");
+            lblRfidPortStatus.setText("Tidak terhubung");
+            lblRfidPortStatus.setForeground(Color.GRAY);
+        } else {
+            String port = (String) cbRfidPort.getSelectedItem();
+            if (port == null || port.startsWith("(")) {
+                JOptionPane.showMessageDialog(this, "Tidak ada COM port tersedia.", "RFID", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            rfidRegistrasiListener = new RfidSerialListener(port, uid -> SwingUtilities.invokeLater(() -> {
+                txtUidResult.setText(uid);
+                lblRfidPortStatus.setText("UID diterima: " + uid);
+                lblRfidPortStatus.setForeground(new Color(0, 120, 0));
+            }));
+            if (rfidRegistrasiListener.start()) {
+                btnRfidConnect.setText("Putuskan");
+                lblRfidPortStatus.setText("Menunggu tap kartu...");
+                lblRfidPortStatus.setForeground(new Color(0, 100, 200));
+            } else {
+                rfidRegistrasiListener = null;
+                lblRfidPortStatus.setText("Gagal membuka " + port);
+                lblRfidPortStatus.setForeground(Color.RED);
+            }
+        }
+    }
+
+    private void onDaftarkanRfid() {
+        String uid = txtUidResult.getText().trim();
+        String nim = txtRfidNim.getText().trim();
+        if (uid.isEmpty() || uid.equals("(belum ada scan)")) {
+            JOptionPane.showMessageDialog(this, "Tap kartu RFID terlebih dahulu untuk mendapatkan UID.", "Registrasi RFID", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (nim.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Masukkan NIM mahasiswa yang akan didaftarkan.", "Registrasi RFID", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        new javax.swing.SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() { return absensiService.daftarkanRfid(nim, uid); }
+            @Override protected void done() {
+                try {
+                    boolean berhasil = get();
+                    if (berhasil) {
+                        JOptionPane.showMessageDialog(Admin.this, "Kartu RFID berhasil didaftarkan ke NIM " + nim + ".", "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+                        txtUidResult.setText("(belum ada scan)");
+                        txtRfidNim.setText("");
+                        lblRfidPortStatus.setText("Kartu terdaftar. Siap scan berikutnya.");
+                        lblRfidPortStatus.setForeground(new Color(0, 120, 0));
+                        reloadMahasiswaFromDb();
+                    } else {
+                        JOptionPane.showMessageDialog(Admin.this, "NIM " + nim + " tidak ditemukan di database.", "Gagal", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(Admin.this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private String searchQueryNormalized() {
         String t = jTextField3.getText().trim();
-        if (t.isEmpty() || SEARCH_PLACEHOLDER.equals(t)) {
-            return "";
-        }
+        if (t.isEmpty() || SEARCH_PLACEHOLDER.equals(t)) return "";
         return t.toLowerCase();
     }
 
     private boolean rowMatchesSearch(Mahasiswa m, String q) {
-        if (q.isEmpty()) {
-            return true;
-        }
+        if (q.isEmpty()) return true;
         String nim = m.getNim() != null ? m.getNim().toLowerCase() : "";
         String id = m.getIdMahasiswa() != null ? m.getIdMahasiswa().toLowerCase() : "";
         String nama = m.getNama() != null ? m.getNama().toLowerCase() : "";
@@ -274,16 +298,12 @@ public class Admin extends javax.swing.JPanel {
 
     private void applySearchFilter() {
         String q = searchQueryNormalized();
-        if (mahasiswaListPanel == null) {
-            return;
-        }
+        if (mahasiswaListPanel == null) return;
         String preserveNim = selectedGridNim;
         mahasiswaListPanel.removeAll();
         List<Mahasiswa> filtered = new ArrayList<>();
         for (Mahasiswa m : mahasiswaCache) {
-            if (rowMatchesSearch(m, q)) {
-                filtered.add(m);
-            }
+            if (rowMatchesSearch(m, q)) filtered.add(m);
         }
         if (filtered.isEmpty()) {
             JPanel empty = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -307,65 +327,39 @@ public class Admin extends javax.swing.JPanel {
         if (preserveNim != null) {
             Mahasiswa stillThere = null;
             for (Mahasiswa m : filtered) {
-                if (preserveNim.equals(m.getNim())) {
-                    stillThere = m;
-                    break;
-                }
+                if (preserveNim.equals(m.getNim())) { stillThere = m; break; }
             }
-            if (stillThere != null) {
-                selectMahasiswaFromGrid(stillThere);
-            } else {
-                selectedGridNim = null;
-                editingNimOriginal = null;
-                updateGridCardBorders();
-            }
+            if (stillThere != null) selectMahasiswaFromGrid(stillThere);
+            else { selectedGridNim = null; editingNimOriginal = null; updateGridCardBorders(); }
         } else {
             updateGridCardBorders();
         }
     }
 
-    private static String nullToEmpty(String s) {
-        return s == null ? "" : s;
-    }
+    private static String nullToEmpty(String s) { return s == null ? "" : s; }
 
     private void reloadMahasiswaFromDb() {
         try {
-            // Muat data hanya dari koleksi 'mahasiswa'
             mahasiswaCache = new ArrayList<>(mahasiswaService.findAll());
             applySearchFilter();
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this,
-                    "Gagal memuat data mahasiswa: " + ex.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal memuat data mahasiswa: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void setComboJurusan(String jurusan) {
-        if (jurusan == null || jurusan.isEmpty()) {
-            CB_Jurusan.setSelectedIndex(0);
-            return;
-        }
+        if (jurusan == null || jurusan.isEmpty()) { CB_Jurusan.setSelectedIndex(0); return; }
         for (int i = 0; i < CB_Jurusan.getItemCount(); i++) {
-            if (jurusan.equals(CB_Jurusan.getItemAt(i))) {
-                CB_Jurusan.setSelectedIndex(i);
-                return;
-            }
+            if (jurusan.equals(CB_Jurusan.getItemAt(i))) { CB_Jurusan.setSelectedIndex(i); return; }
         }
         CB_Jurusan.setSelectedIndex(0);
     }
 
     private void clearFormMahasiswa() {
-        txtNIM.setText("");
-        jTextField2.setText("");
-        txtPassword.setText("");
-        txtEmail.setText("");
-        if (CB_Jurusan.getItemCount() > 0) {
-            CB_Jurusan.setSelectedIndex(0);
-        }
-        selectedGridNim = null;
-        editingNimOriginal = null;
+        txtNIM.setText(""); jTextField2.setText(""); txtPassword.setText(""); txtEmail.setText("");
+        if (CB_Jurusan.getItemCount() > 0) CB_Jurusan.setSelectedIndex(0);
+        selectedGridNim = null; editingNimOriginal = null;
         updateGridCardBorders();
     }
 
@@ -381,95 +375,59 @@ public class Admin extends javax.swing.JPanel {
 
     private void onSaveMahasiswa() {
         Mahasiswa m = readMahasiswaFromForm();
-        if (m.getNim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "NIM wajib diisi.", "Validasi", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        if (!DaftarJurusan.isValidSelection(m.getJurusan())) {
-            JOptionPane.showMessageDialog(this, "Pilih jurusan yang valid.", "Validasi", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        if (m.getNim().isEmpty()) { JOptionPane.showMessageDialog(this, "NIM wajib diisi.", "Validasi", JOptionPane.WARNING_MESSAGE); return; }
+        if (!DaftarJurusan.isValidSelection(m.getJurusan())) { JOptionPane.showMessageDialog(this, "Pilih jurusan yang valid.", "Validasi", JOptionPane.WARNING_MESSAGE); return; }
         m.setJurusan(DaftarJurusan.toCanonical(m.getJurusan()));
         try {
             if (mahasiswaService.findByNim(m.getNim()) != null) {
-                JOptionPane.showMessageDialog(this,
-                        "NIM sudah terdaftar. Gunakan Update atau NIM lain.",
-                        "Duplikat",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "NIM sudah terdaftar. Gunakan Update atau NIM lain.", "Duplikat", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             mahasiswaService.save(m);
-            JOptionPane.showMessageDialog(this, "Data mahasiswa disimpan.", "Berhasil",
-                    JOptionPane.INFORMATION_MESSAGE);
-            reloadMahasiswaFromDb();
-            clearFormMahasiswa();
+            JOptionPane.showMessageDialog(this, "Data mahasiswa disimpan.", "Berhasil", JOptionPane.INFORMATION_MESSAGE);
+            reloadMahasiswaFromDb(); clearFormMahasiswa();
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal menyimpan: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal menyimpan: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void onUpdateMahasiswa() {
         if (editingNimOriginal == null || editingNimOriginal.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Klik Edit pada kartu mahasiswa untuk memuat data ke form, lalu tekan Update setelah mengubah. Untuk data baru gunakan Add.",
-                    "Update",
-                    JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Klik Edit pada kartu mahasiswa untuk memuat data ke form, lalu tekan Update setelah mengubah. Untuk data baru gunakan Add.", "Update", JOptionPane.WARNING_MESSAGE);
             return;
         }
         Mahasiswa m = readMahasiswaFromForm();
-        if (m.getNim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "NIM wajib diisi.", "Validasi", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        if (!DaftarJurusan.isValidSelection(m.getJurusan())) {
-            JOptionPane.showMessageDialog(this, "Pilih jurusan yang valid.", "Validasi", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        if (m.getNim().isEmpty()) { JOptionPane.showMessageDialog(this, "NIM wajib diisi.", "Validasi", JOptionPane.WARNING_MESSAGE); return; }
+        if (!DaftarJurusan.isValidSelection(m.getJurusan())) { JOptionPane.showMessageDialog(this, "Pilih jurusan yang valid.", "Validasi", JOptionPane.WARNING_MESSAGE); return; }
         m.setJurusan(DaftarJurusan.toCanonical(m.getJurusan()));
         try {
             if (!m.getNim().equals(editingNimOriginal) && mahasiswaService.findByNim(m.getNim()) != null) {
-                JOptionPane.showMessageDialog(this, "NIM baru sudah dipakai mahasiswa lain.", "Duplikat",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "NIM baru sudah dipakai mahasiswa lain.", "Duplikat", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             mahasiswaService.updateByNim(editingNimOriginal, m);
-            JOptionPane.showMessageDialog(this, "Data mahasiswa diperbarui.", "Berhasil",
-                    JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Data mahasiswa diperbarui.", "Berhasil", JOptionPane.INFORMATION_MESSAGE);
             editingNimOriginal = m.getNim();
-            reloadMahasiswaFromDb();
-            selectRowByNim(m.getNim());
+            reloadMahasiswaFromDb(); selectRowByNim(m.getNim());
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal memperbarui: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal memperbarui: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void selectRowByNim(String nim) {
-        if (nim == null || mahasiswaListPanel == null) {
-            return;
-        }
+        if (nim == null || mahasiswaListPanel == null) return;
         for (Component rowComp : mahasiswaListPanel.getComponents()) {
-            if (!(rowComp instanceof JPanel)) {
-                continue;
-            }
+            if (!(rowComp instanceof JPanel)) continue;
             for (Component c : ((JPanel) rowComp).getComponents()) {
-                if (!(c instanceof JPanel)) {
-                    continue;
-                }
+                if (!(c instanceof JPanel)) continue;
                 JPanel card = (JPanel) c;
                 String n = (String) card.getClientProperty("nim");
-                if (n == null) {
-                    continue;
-                }
+                if (n == null) continue;
                 if (nim.equals(n)) {
                     Mahasiswa m = mahasiswaService.findByNim(nim);
-                    if (m != null) {
-                        selectMahasiswaFromGrid(m);
-                        card.scrollRectToVisible(new Rectangle(0, 0, card.getWidth(), card.getHeight()));
-                    }
+                    if (m != null) { selectMahasiswaFromGrid(m); card.scrollRectToVisible(new Rectangle(0, 0, card.getWidth(), card.getHeight())); }
                     return;
                 }
             }
@@ -477,34 +435,84 @@ public class Admin extends javax.swing.JPanel {
     }
 
     private void hapusMahasiswaByNim(String nim) {
-        if (nim == null || nim.isEmpty()) {
-            return;
-        }
-        int ok = JOptionPane.showConfirmDialog(this,
-                "Hapus mahasiswa dengan NIM " + nim + "?",
-                "Konfirmasi",
-                JOptionPane.YES_NO_OPTION);
-        if (ok != JOptionPane.YES_OPTION) {
-            return;
-        }
+        if (nim == null || nim.isEmpty()) return;
+        int ok = JOptionPane.showConfirmDialog(this, "Hapus mahasiswa dengan NIM " + nim + "?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
+        if (ok != JOptionPane.YES_OPTION) return;
         try {
             mahasiswaService.deleteByNim(nim);
-            reloadMahasiswaFromDb();
-            clearFormMahasiswa();
+            reloadMahasiswaFromDb(); clearFormMahasiswa();
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal menghapus: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal menghapus: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated
+    // ─── Riwayat absensi per mahasiswa ───────────────────────────────────────────
+
+    private void showRiwayatAbsensi(String nim, String nama) {
+        String title = "Riwayat Absensi - " + (nama != null ? nama : nim);
+        try {
+            // Load student's RSA public key for signature verification
+            com.mycompany.sesuaitugas.objects.Mahasiswa mhs =
+                    new com.mycompany.sesuaitugas.services.MahasiswaService().findByNim(nim);
+            java.security.PublicKey pubKey = null;
+            if (mhs != null && mhs.getRsaPublicKey() != null && !mhs.getRsaPublicKey().isEmpty()) {
+                try {
+                    pubKey = com.mycompany.sesuaitugas.util.CryptoUtil.stringToPublicKey(mhs.getRsaPublicKey());
+                } catch (Exception e) { /* public key format error */ }
+            }
+
+            java.util.List<com.mycompany.sesuaitugas.objects.Absensi> list =
+                    absensiService.findByNim(nim);
+            String[][] data = new String[list.size()][5];
+            for (int i = 0; i < list.size(); i++) {
+                com.mycompany.sesuaitugas.objects.Absensi a = list.get(i);
+                data[i][0] = a.getTanggal();
+                data[i][1] = a.getWaktu();
+                data[i][2] = a.getNama();
+                data[i][3] = a.getStatus();
+
+                // Verify signature
+                if (a.getSignature() != null && !a.getSignature().isEmpty() && pubKey != null) {
+                    String checkData = a.getNim() + "|" + a.getTanggal() + "|" + a.getWaktu();
+                    boolean valid = com.mycompany.sesuaitugas.util.CryptoUtil.rsaVerify(checkData, a.getSignature(), pubKey);
+                    data[i][4] = valid ? "\u2713 Sah (RSA)" : "\u2717 Invalid";
+                } else if (a.getSignature() == null || a.getSignature().isEmpty()) {
+                    data[i][4] = "-";
+                } else {
+                    data[i][4] = "? No Key";
+                }
+            }
+            String[] cols = {"Tanggal", "Waktu", "Nama", "Status", "Signature"};
+            javax.swing.JTable table = new javax.swing.JTable(data, cols);
+            table.setFont(new java.awt.Font("Segoe UI", 0, 14));
+            table.setRowHeight(28);
+            table.getTableHeader().setFont(new java.awt.Font("Segoe UI", 1, 14));
+            table.getColumnModel().getColumn(3).setPreferredWidth(60);
+            table.getColumnModel().getColumn(4).setPreferredWidth(100);
+            table.setEnabled(false);
+            javax.swing.JScrollPane sp = new javax.swing.JScrollPane(table);
+            sp.setPreferredSize(new java.awt.Dimension(700, 350));
+            JOptionPane.showMessageDialog(this, sp, title, JOptionPane.PLAIN_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Gagal memuat riwayat: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // ─── Logout ────────────────────────────────────────────────────────────────
+
+    private void onLogout() {
+        if (rfidRegistrasiListener != null) {
+            rfidRegistrasiListener.stop();
+            rfidRegistrasiListener = null;
+        }
+        java.awt.Window parent = SwingUtilities.getWindowAncestor(this);
+        if (parent != null) parent.dispose();
+        new Login().setVisible(true);
+    }
+
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -528,6 +536,18 @@ public class Admin extends javax.swing.JPanel {
         txtPassword = new javax.swing.JTextField();
         jLabelEmail = new javax.swing.JLabel();
         txtEmail = new javax.swing.JTextField();
+        jLabelRfidPort = new javax.swing.JLabel();
+        cbRfidPort = new javax.swing.JComboBox<>();
+        btnRfidConnect = new javax.swing.JButton();
+        lblRfidPortStatus = new javax.swing.JLabel();
+        jLabelRfidUid = new javax.swing.JLabel();
+        txtUidResult = new javax.swing.JTextField();
+        jLabelRfidNim = new javax.swing.JLabel();
+        txtRfidNim = new javax.swing.JTextField();
+        btnDaftarRfid = new javax.swing.JButton();
+        btnLanguageID = new javax.swing.JButton();
+        btnLanguageEN = new javax.swing.JButton();
+        btnLogout = new javax.swing.JButton();
 
         jPanel1.setBackground(new java.awt.Color(255, 255, 255));
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -542,28 +562,28 @@ public class Admin extends javax.swing.JPanel {
 
         CB_Jurusan.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "---" }));
         jPanel1.add(CB_Jurusan, new org.netbeans.lib.awtextra.AbsoluteConstraints(140, 110, 220, 40));
-        jPanel1.add(jSeparator1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 172, 1830, -1));
+        jPanel1.add(jSeparator1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 172, 1700, -1));
 
         jButton5.setBackground(new java.awt.Color(0, 51, 255));
         jButton5.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jButton5.setForeground(new java.awt.Color(255, 255, 255));
         jButton5.setText("Add");
-        jPanel1.add(jButton5, new org.netbeans.lib.awtextra.AbsoluteConstraints(860, 50, 130, -1));
+        jPanel1.add(jButton5, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 50, 130, -1));
 
         jButton6.setBackground(new java.awt.Color(204, 204, 204));
         jButton6.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jButton6.setForeground(new java.awt.Color(102, 102, 102));
         jButton6.setText("Update");
-        jPanel1.add(jButton6, new org.netbeans.lib.awtextra.AbsoluteConstraints(1000, 50, 130, 25));
+        jPanel1.add(jButton6, new org.netbeans.lib.awtextra.AbsoluteConstraints(960, 50, 130, 25));
 
         jButton7.setBackground(new java.awt.Color(0, 204, 0));
         jButton7.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jButton7.setForeground(new java.awt.Color(255, 255, 255));
         jButton7.setText("Refresh");
-        jPanel1.add(jButton7, new org.netbeans.lib.awtextra.AbsoluteConstraints(860, 80, 270, -1));
+        jPanel1.add(jButton7, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 80, 270, -1));
 
         jTextField3.setText("Search");
-        jPanel1.add(jTextField3, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 110, 350, 40));
+        jPanel1.add(jTextField3, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 110, 270, 40));
 
         jPanel3.setBackground(new java.awt.Color(255, 255, 255));
         jPanel3.setLayout(new java.awt.BorderLayout());
@@ -580,7 +600,7 @@ public class Admin extends javax.swing.JPanel {
 
         jPanel3.add(jScrollPaneMahasiswa, java.awt.BorderLayout.CENTER);
 
-        jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 172, 1870, 1028));
+        jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 172, 1700, 1028));
 
         jLabel5.setText("Jurusan ");
         jPanel1.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(50, 110, 90, 30));
@@ -599,25 +619,159 @@ public class Admin extends javax.swing.JPanel {
         txtEmail.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
         jPanel1.add(txtEmail, new org.netbeans.lib.awtextra.AbsoluteConstraints(620, 110, 160, 40));
 
+        jLabelRfidPort.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        jLabelRfidPort.setText("COM Port:");
+        jPanel1.add(jLabelRfidPort, new org.netbeans.lib.awtextra.AbsoluteConstraints(1120, 30, 85, 28));
+
+        cbRfidPort.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        jPanel1.add(cbRfidPort, new org.netbeans.lib.awtextra.AbsoluteConstraints(1200, 30, 120, 28));
+
+        btnRfidConnect.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnRfidConnect.setText("Hubungkan");
+        jPanel1.add(btnRfidConnect, new org.netbeans.lib.awtextra.AbsoluteConstraints(1440, 40, 110, 28));
+
+        lblRfidPortStatus.setText("Tidak terhubung");
+        jPanel1.add(lblRfidPortStatus, new org.netbeans.lib.awtextra.AbsoluteConstraints(1450, 70, 220, 22));
+
+        jLabelRfidUid.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        jLabelRfidUid.setText("UID Terakhir:");
+        jPanel1.add(jLabelRfidUid, new org.netbeans.lib.awtextra.AbsoluteConstraints(1120, 80, 90, 28));
+
+        txtUidResult.setEditable(false);
+        txtUidResult.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        txtUidResult.setText("(belum ada scan)");
+        jPanel1.add(txtUidResult, new org.netbeans.lib.awtextra.AbsoluteConstraints(1210, 80, 200, 28));
+
+        jLabelRfidNim.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        jLabelRfidNim.setText("NIM Mahasiswa:");
+        jPanel1.add(jLabelRfidNim, new org.netbeans.lib.awtextra.AbsoluteConstraints(1120, 120, 100, 28));
+
+        txtRfidNim.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        jPanel1.add(txtRfidNim, new org.netbeans.lib.awtextra.AbsoluteConstraints(1230, 120, 130, 28));
+
+        btnDaftarRfid.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnDaftarRfid.setText("Daftarkan Kartu");
+        jPanel1.add(btnDaftarRfid, new org.netbeans.lib.awtextra.AbsoluteConstraints(1430, 120, 140, 28));
+
+        btnLanguageID.setBackground(new java.awt.Color(240, 240, 224));
+        btnLanguageID.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
+        btnLanguageID.setText("🇮🇩 ID");
+        btnLanguageID.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLanguageIDActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnLanguageID, new org.netbeans.lib.awtextra.AbsoluteConstraints(1590, 80, 85, 32));
+
+        btnLanguageEN.setBackground(new java.awt.Color(240, 240, 224));
+        btnLanguageEN.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
+        btnLanguageEN.setText("🇬🇧 EN");
+        btnLanguageEN.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLanguageENActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btnLanguageEN, new org.netbeans.lib.awtextra.AbsoluteConstraints(1590, 120, 85, 32));
+
+        btnLogout.setBackground(new java.awt.Color(204, 51, 51));
+        btnLogout.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        btnLogout.setForeground(new java.awt.Color(255, 255, 255));
+        btnLogout.setText("Logout");
+        jPanel1.add(btnLogout, new org.netbeans.lib.awtextra.AbsoluteConstraints(1580, 30, 100, 32));
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap(246, Short.MAX_VALUE)
+                .addGap(89, 89, 89)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addContainerGap(303, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 1200, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE))
+                .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
 
+    /**
+     * Tambah tombol ganti bahasa (ID/EN) di panel admin.
+     */
+    private void addLanguageButtonsAdmin() {
+        JPanel langPanel = new JPanel();
+        langPanel.setBackground(new Color(240, 248, 250));
+        langPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 15, 5));
+        
+        JLabel langLabel = new JLabel("Bahasa / Language:");
+        langLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        
+        JButton btnID = new JButton("🇮🇩 ID");
+        btnID.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        btnID.addActionListener(e -> {
+            I18nManager.setLocale(new Locale("id", "ID"));
+            refreshUITextAdmin();
+        });
+        
+        JButton btnEN = new JButton("🇬🇧 EN");
+        btnEN.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        btnEN.addActionListener(e -> {
+            I18nManager.setLocale(new Locale("en", "US"));
+            refreshUITextAdmin();
+        });
+        
+        langPanel.add(langLabel);
+        langPanel.add(btnID);
+        langPanel.add(btnEN);
+        
+        jPanel1.add(langPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(1300, 50, 280, 28));
+    }
+
+    /**
+     * Refresh semua text UI di Admin sesuai locale.
+     */
+    private void refreshUITextAdmin() {
+        jLabel1.setText(I18nManager.get("admin.title"));
+        jLabel3.setText(I18nManager.get("admin.subtitle"));
+        jButton5.setText(I18nManager.get("admin.buttonAdd"));
+        jButton6.setText(I18nManager.get("admin.buttonEdit"));
+        jButton7.setText(I18nManager.get("admin.buttonDelete"));
+        btnLogout.setText(I18nManager.get("admin.buttonLogout"));
+        jLabelRfidPort.setText(I18nManager.get("admin.portLabel"));
+        btnRfidConnect.setText(I18nManager.get("admin.buttonConnect"));
+        btnDaftarRfid.setText(I18nManager.get("admin.buttonRegisterCard"));
+        jLabelRfidUid.setText(I18nManager.get("admin.uidResult"));
+        jLabelRfidNim.setText(I18nManager.get("admin.nimToRegister"));
+        jLabelEmail.setText(I18nManager.get("admin.email"));
+        jLabelPassword.setText(I18nManager.get("admin.email"));
+    }
+
+    /**
+     * Event handler untuk tombol ID.
+     */
+    private void btnLanguageIDActionPerformed(java.awt.event.ActionEvent evt) {
+        I18nManager.setLocale(new Locale("id", "ID"));
+        refreshUITextAdmin();
+    }
+
+    /**
+     * Event handler untuk tombol EN.
+     */
+    private void btnLanguageENActionPerformed(java.awt.event.ActionEvent evt) {
+        I18nManager.setLocale(new Locale("en", "US"));
+        refreshUITextAdmin();
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox<String> CB_Jurusan;
+    private javax.swing.JButton btnDaftarRfid;
+    private javax.swing.JButton btnLanguageEN;
+    private javax.swing.JButton btnLanguageID;
+    private javax.swing.JButton btnLogout;
+    private javax.swing.JButton btnRfidConnect;
+    private javax.swing.JComboBox<String> cbRfidPort;
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
     private javax.swing.JButton jButton7;
@@ -627,6 +781,9 @@ public class Admin extends javax.swing.JPanel {
     private javax.swing.JLabel jLabelEmail;
     private javax.swing.JLabel jLabelMahasiswaGridHint;
     private javax.swing.JLabel jLabelPassword;
+    private javax.swing.JLabel jLabelRfidNim;
+    private javax.swing.JLabel jLabelRfidPort;
+    private javax.swing.JLabel jLabelRfidUid;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanelMahasiswaList;
@@ -634,8 +791,11 @@ public class Admin extends javax.swing.JPanel {
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTextField jTextField2;
     private javax.swing.JTextField jTextField3;
+    private javax.swing.JLabel lblRfidPortStatus;
     private javax.swing.JTextField txtEmail;
     private javax.swing.JTextField txtNIM;
     private javax.swing.JTextField txtPassword;
+    private javax.swing.JTextField txtRfidNim;
+    private javax.swing.JTextField txtUidResult;
     // End of variables declaration//GEN-END:variables
 }
