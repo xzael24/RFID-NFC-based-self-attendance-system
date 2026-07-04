@@ -24,6 +24,7 @@ public class Login extends javax.swing.JFrame {
     private final LoginService loginService;
     private static final String PREFS_EMAIL = "login_email";
     private static final String PREFS_REMEMBER = "login_remember";
+    private final javax.swing.JFrame parentFrameToClose;
 
     /** Echo character untuk menyembunyikan kata sandi (disimpan sebelum placeholder). */
     private char passwordEchoChar = '\u2022';
@@ -32,6 +33,14 @@ public class Login extends javax.swing.JFrame {
      * Creates new form Login
      */
     public Login() {
+        this(null);
+    }
+
+    /**
+     * Creates new form Login with a parent frame to close on admin login success.
+     */
+    public Login(javax.swing.JFrame parentToCloseOnAdminSuccess) {
+        this.parentFrameToClose = parentToCloseOnAdminSuccess;
         initComponents();
         loginService = new LoginService();
         loginService.ensureDefaultAdmin();
@@ -421,6 +430,9 @@ public class Login extends javax.swing.JFrame {
             adminFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
             adminFrame.setLocationRelativeTo(null);
             adminFrame.setVisible(true);
+            if (parentFrameToClose != null) {
+                parentFrameToClose.dispose();
+            }
             this.dispose();
         } catch (Throwable ex) {
             logger.log(java.util.logging.Level.SEVERE, "Gagal membuka halaman Admin", ex);

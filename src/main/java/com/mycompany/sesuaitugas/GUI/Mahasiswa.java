@@ -27,11 +27,11 @@ public class Mahasiswa extends javax.swing.JFrame {
 
     public Mahasiswa() {
         initComponents();
-        addLanguageButtonsMahasiswa();
         java.awt.Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen.width, screen.height);
         jPanel1.setPreferredSize(new java.awt.Dimension(screen.width, screen.height));
         setLocationRelativeTo(null);
+        seedInitialData();
         setupClock();
         setupLogTable();
         setupPortCombo();
@@ -100,10 +100,17 @@ public class Mahasiswa extends javax.swing.JFrame {
         }
     }
 
+    private void seedInitialData() {
+        com.mycompany.sesuaitugas.services.LoginService svc = new com.mycompany.sesuaitugas.services.LoginService();
+        svc.ensureDefaultAdmin();
+        svc.ensureDefaultMahasiswa();
+        com.mycompany.sesuaitugas.util.SeedDummyData.seed();
+    }
+
     private void setupListeners() {
         btnScan.addActionListener(e -> onManualScan());
         txtRfidInput.addActionListener(e -> onManualScan());
-        btnLogout.addActionListener(e -> onLogout());
+        btnAdminLogin.addActionListener(e -> onAdminLogin());
         btnConnect.addActionListener(e -> onToggleConnect());
         btnSimulasi.addActionListener(e -> onSimulasiRfid());
     }
@@ -215,10 +222,9 @@ public class Mahasiswa extends javax.swing.JFrame {
         lblJurusanValue.setText("-"); lblIdValue.setText("-"); lblStatusTime.setText("");
     }
 
-    private void onLogout() {
-        if (rfidListener != null) rfidListener.stop();
-        dispose();
-        new Login().setVisible(true);
+    private void onAdminLogin() {
+        Login loginFrame = new Login(this);
+        loginFrame.setVisible(true);
     }
 
     private static String nullToEmpty(String s) { return s == null || s.trim().isEmpty() ? "-" : s; }
@@ -242,7 +248,7 @@ public class Mahasiswa extends javax.swing.JFrame {
         btnScan = new javax.swing.JButton();
         btnLanguageID = new javax.swing.JButton();
         btnLanguageEN = new javax.swing.JButton();
-        btnLogout = new javax.swing.JButton();
+        btnAdminLogin = new javax.swing.JButton();
         panelInfo = new javax.swing.JPanel();
         lblNamaLabel = new javax.swing.JLabel();
         lblNamaValue = new javax.swing.JLabel();
@@ -350,10 +356,11 @@ public class Mahasiswa extends javax.swing.JFrame {
         jPanel1.add(btnLanguageEN);
         btnLanguageEN.setBounds(1410, 60, 85, 45);
 
-        btnLogout.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        btnLogout.setText("Logout");
-        jPanel1.add(btnLogout);
-        btnLogout.setBounds(1700, 30, 130, 45);
+        btnAdminLogin.setBackground(new java.awt.Color(220, 220, 220));
+        btnAdminLogin.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
+        btnAdminLogin.setText("Admin Login");
+        jPanel1.add(btnAdminLogin);
+        btnAdminLogin.setBounds(1350, 20, 100, 28);
 
         panelInfo.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Informasi Mahasiswa", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Segoe UI", 1, 16))); // NOI18N
         panelInfo.setLayout(null);
@@ -461,39 +468,6 @@ public class Mahasiswa extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     /**
-     * Tambah tombol ganti bahasa (ID/EN) di halaman mahasiswa.
-     */
-    private void addLanguageButtonsMahasiswa() {
-        javax.swing.JPanel langPanel = new javax.swing.JPanel();
-        langPanel.setBackground(new java.awt.Color(240, 248, 250));
-        langPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 15, 5));
-        
-        javax.swing.JLabel langLabel = new javax.swing.JLabel("Bahasa / Language:");
-        langLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        
-        javax.swing.JButton btnID = new javax.swing.JButton("🇮🇩 ID");
-        btnID.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 10));
-        btnID.addActionListener(e -> {
-            I18nManager.setLocale(new Locale("id", "ID"));
-            refreshUITextMahasiswa();
-        });
-        
-        javax.swing.JButton btnEN = new javax.swing.JButton("🇬🇧 EN");
-        btnEN.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 10));
-        btnEN.addActionListener(e -> {
-            I18nManager.setLocale(new Locale("en", "US"));
-            refreshUITextMahasiswa();
-        });
-        
-        langPanel.add(langLabel);
-        langPanel.add(btnID);
-        langPanel.add(btnEN);
-        
-        jPanel1.add(langPanel);
-        langPanel.setBounds(1550, 30, 280, 28);
-    }
-
-    /**
      * Refresh semua text UI di Mahasiswa sesuai locale.
      */
     private void refreshUITextMahasiswa() {
@@ -503,7 +477,7 @@ public class Mahasiswa extends javax.swing.JFrame {
         lblRfidLabel.setText(I18nManager.get("mahasiswa.rfidLabel"));
         btnScan.setText(I18nManager.get("mahasiswa.buttonScan"));
         btnSimulasi.setText(I18nManager.get("mahasiswa.buttonSimulation"));
-        btnLogout.setText(I18nManager.get("mahasiswa.buttonLogout"));
+        btnAdminLogin.setText(I18nManager.get("mahasiswa.buttonAdminLogin"));
         lblNamaLabel.setText(I18nManager.get("mahasiswa.namaLabel"));
         lblNimLabel.setText(I18nManager.get("mahasiswa.nimLabel"));
         lblJurusanLabel.setText(I18nManager.get("mahasiswa.jurusanLabel"));
@@ -528,10 +502,10 @@ public class Mahasiswa extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnAdminLogin;
     private javax.swing.JButton btnConnect;
     private javax.swing.JButton btnLanguageEN;
     private javax.swing.JButton btnLanguageID;
-    private javax.swing.JButton btnLogout;
     private javax.swing.JButton btnScan;
     private javax.swing.JButton btnSimulasi;
     private javax.swing.JComboBox cbPort;
