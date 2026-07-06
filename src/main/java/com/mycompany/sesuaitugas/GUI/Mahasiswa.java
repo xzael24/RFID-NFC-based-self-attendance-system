@@ -213,6 +213,7 @@ public class Mahasiswa extends javax.swing.JFrame {
         logTableModel.insertRow(0, new Object[]{waktu, mhs.getNim(), mhs.getNama(), statusLabel});
         showStatus("Absensi berhasil! (tersimpan ke database)", new Color(0, 153, 0));
         lblStatusTime.setText("Tercatat pukul " + waktu);
+        com.mycompany.sesuaitugas.util.SoundUtil.playSuccess();
     }
 
     private void showStatus(String msg, Color c) { lblStatus.setText(msg); lblStatus.setForeground(c); }

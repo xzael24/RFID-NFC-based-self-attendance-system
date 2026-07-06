@@ -102,7 +102,7 @@ public class RfidSerialListener {
         port.setNumDataBits(8);
         port.setNumStopBits(SerialPort.ONE_STOP_BIT);
         port.setParity(SerialPort.NO_PARITY);
-        port.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
+        port.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 100, 0);
 
         if (!port.openPort()) {
             System.err.println("[RFID] Gagal membuka port: " + portName);
